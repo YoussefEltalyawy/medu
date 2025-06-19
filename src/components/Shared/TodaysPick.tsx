@@ -1,8 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { Squircle } from 'corner-smoothing';
-import ContentCard from '@/components/Discover/ContentCard';
-import TodaysPick from '@/components/Shared/TodaysPick';
 import { createClient } from '@/lib/supabase';
 
 interface Movie {
@@ -21,17 +19,26 @@ interface TVShow {
   overview: string;
 }
 
-const DiscoverPage: React.FC = () => {
+interface UserProfile {
+  id: string;
+  target_language: string;
+}
+
+const TodaysPick: React.FC = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
-  const [tvShows, setTvShows] = useState<TVShow[]>([]);
+  const [tvShow, setTvShow] = useState<TVShow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userLanguage, setUserLanguage] = useState<string>('German'); // Default to German
-  const [activeFilter, setActiveFilter] = useState<'all' | 'movies' | 'tvshows'>('all');
+  const [userLanguage, setUserLanguage] = useState<string>('de'); // Default to German
 
-  // TMDB API configuration
+  // TMDB API configuration from environment variables
   const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
+
+  // Check if API key is available
+  if (!TMDB_API_KEY) {
+    console.error('TMDB API key is not defined in environment variables');
+  }
 
   // Language mapping for TMDB API
   const languageMapping: Record<string, { code: string, originalCode: string }> = {
@@ -74,13 +81,7 @@ const DiscoverPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const fetchContent = async () => {
-      if (!TMDB_API_KEY) {
-        setError('API key is not defined');
-        setLoading(false);
-        return;
-      }
-
+    const fetchMoviesAndTVShow = async () => {
       try {
         setLoading(true);
         
@@ -110,32 +111,89 @@ const DiscoverPage: React.FC = () => {
         
         const tvData = await tvResponse.json();
         
-        setMovies(moviesData.results);
-        setTvShows(tvData.results);
+        // Get 2 random movies and 1 random TV show
+        const randomMovies = getRandomItems(moviesData.results, 2);
+        const randomTvShow = getRandomItems(tvData.results, 1)[0];
+        
+        setMovies(randomMovies as Movie[]);
+        setTvShow(randomTvShow as TVShow);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
-        console.error('Error fetching content:', err);
+        console.error('Error fetching recommendations:', err);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchContent();
+    fetchMoviesAndTVShow();
   }, [userLanguage]);
-
-  // Filter content based on active filter
-  const filteredContent = () => {
-    if (activeFilter === 'movies') return movies;
-    if (activeFilter === 'tvshows') return [];
-    return [];
+  
+  // Helper function to get random items from an array with a date-based seed
+  // This ensures recommendations stay consistent throughout the day but change daily
+  const getRandomItems = <T,>(array: T[], count: number): T[] => {
+    if (!array || array.length === 0) return [];
+    
+    // Create a date-based seed using the current date (without time)
+    const today = new Date();
+    const dateSeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    
+    // Use the date seed to create a deterministic sort
+    const shuffled = [...array].sort((a, b) => {
+      // Create a deterministic number between 0 and 1 based on array indices and date seed
+      const indexA = array.indexOf(a);
+      const indexB = array.indexOf(b);
+      const seedA = (dateSeed * (indexA + 1)) % 10000 / 10000;
+      const seedB = (dateSeed * (indexB + 1)) % 10000 / 10000;
+      return seedA - seedB;
+    });
+    
+    return shuffled.slice(0, count);
   };
 
-  // Render content based on type
-  const renderContent = () => {
-    if (loading) {
-      return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+  // Function to render a media card (movie or TV show)
+  const renderMediaCard = (item: Movie | TVShow, type: 'movie' | 'tv') => {
+    if (!item) return null;
+    
+    const title = type === 'movie' ? (item as Movie).title : (item as TVShow).name;
+    const backdropPath = item.backdrop_path;
+    const posterPath = item.poster_path;
+    
+    return (
+      <Squircle
+        key={item.id}
+        borderWidth={2}
+        cornerRadius={25}
+        className="relative overflow-hidden h-[200px] before:bg-black"
+      >
+        <div className="absolute inset-0 z-0">
+          <img
+            src={`${IMAGE_BASE_URL}${backdropPath || posterPath}`}
+            alt={title}
+            className="w-full h-full object-cover"
+          />
+        </div>
+
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 p-4">
+          {/* Title at bottom-left */}
+          <h3 className="absolute bottom-4 left-4 text-white text-xl font-bold">
+            {title}
+          </h3>
+
+          {/* Type at bottom-right */}
+          <div className="absolute bottom-4 right-4 text-xs text-white bg-[#082408] px-3 py-1 rounded-full">
+            {type === 'movie' ? 'Movie' : 'TV Show'}
+          </div>
+        </div>
+      </Squircle>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="mt-8">
+        <h4 className="ml-2 text-black/40 mb-4">Today's Pick</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
             <Squircle
               key={i}
               borderWidth={2}
@@ -145,90 +203,34 @@ const DiscoverPage: React.FC = () => {
             />
           ))}
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
-    if (error) {
-      return (
+  if (error) {
+    return (
+      <div className="mt-8">
+        <h4 className="ml-2 text-black/40 mb-4">Today's Pick</h4>
         <Squircle
           borderWidth={2}
           cornerRadius={25}
           className="p-4 bg-red-50 text-red-500 before:bg-red-100"
         >
-          <p>Failed to load content. Please try again later.</p>
+          <p>Failed to load recommendations. Please try again later.</p>
         </Squircle>
-      );
-    }
-
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {activeFilter === 'all' || activeFilter === 'movies' ? (
-          movies.map((movie) => (
-            <ContentCard
-              key={movie.id}
-              id={movie.id}
-              title={movie.title}
-              imageUrl={`${IMAGE_BASE_URL}${movie.backdrop_path || movie.poster_path}`}
-              type="movie"
-            />
-          ))
-        ) : null}
-        
-        {activeFilter === 'all' || activeFilter === 'tvshows' ? (
-          tvShows.map((show) => (
-            <ContentCard
-              key={show.id}
-              id={show.id}
-              title={show.name}
-              imageUrl={`${IMAGE_BASE_URL}${show.backdrop_path || show.poster_path}`}
-              type="tv"
-            />
-          ))
-        ) : null}
       </div>
     );
-  };
+  }
 
   return (
-    <main className="min-h-screen py-8 px-4 md:px-12">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-[#082408]">
-          Discover
-        </h1>
-        
-        {/* Today's Pick Section */}
-        <TodaysPick />
-        
-        {/* Content Filters */}
-        <div className="mt-8 mb-6">
-          <h4 className="ml-2 text-black/40 mb-4">Browse Content</h4>
-          <div className="flex space-x-4">
-            <button
-              className={`px-4 py-2 rounded-full ${activeFilter === 'all' ? 'bg-[#082408] text-white' : 'bg-gray-200 text-gray-700'}`}
-              onClick={() => setActiveFilter('all')}
-            >
-              All
-            </button>
-            <button
-              className={`px-4 py-2 rounded-full ${activeFilter === 'movies' ? 'bg-[#082408] text-white' : 'bg-gray-200 text-gray-700'}`}
-              onClick={() => setActiveFilter('movies')}
-            >
-              Movies
-            </button>
-            <button
-              className={`px-4 py-2 rounded-full ${activeFilter === 'tvshows' ? 'bg-[#082408] text-white' : 'bg-gray-200 text-gray-700'}`}
-              onClick={() => setActiveFilter('tvshows')}
-            >
-              TV Shows
-            </button>
-          </div>
-        </div>
-        
-        {/* Content Grid */}
-        {renderContent()}
+    <div className="mt-8">
+      <h4 className="ml-2 text-black/40 mb-4">Today's Pick</h4>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {movies.map((movie) => renderMediaCard(movie, 'movie'))}
+        {tvShow && renderMediaCard(tvShow, 'tv')}
       </div>
-    </main>
+    </div>
   );
 };
 
-export default DiscoverPage;
+export default TodaysPick;

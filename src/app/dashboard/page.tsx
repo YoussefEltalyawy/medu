@@ -1,41 +1,27 @@
-import React from 'react';
+import React from "react";
+import OverviewCards from "../../components/Dashboard/OverviewCards";
+import ProgressSection from "../../components/Dashboard/ProgressSection";
+import TodaysPick from "../../components/Shared/TodaysPick";
 
-const DashboardPage = () => {
+const DashboardPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Dashboard</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Daily Progress Overview Cards */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Daily Progress</h2>
-          <p className="text-gray-600">Overview of your daily learning progress.</p>
+    <main className="min-h-screen py-8 px-4 md:px-12">
+      {/* <NavBar /> */}
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-[#082408]">
+          Good morning, Talyawy!
+        </h1>
+        <h4 className="ml-2 text-black/40">Overview</h4>
+        <OverviewCards />
+        <div className="mt-8">
+          <h4 className="ml-2 text-black/40">Progress</h4>
+          <ProgressSection />
         </div>
-
-        {/* Quick Flashcard Review */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Review</h2>
-          <p className="text-gray-600">Review 5-10 flashcards quickly.</p>
-        </div>
-
-        {/* Goal Tracking Widget */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Goals</h2>
-          <p className="text-gray-600">Track your learning goals.</p>
-        </div>
-
-        {/* Recent Activity/Journal Feed */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Activity</h2>
-          <p className="text-gray-600">Your recent learning activities and journal entries.</p>
-        </div>
-
-        {/* Quick Shortcuts */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Shortcuts</h2>
-          <p className="text-gray-600">Quick access to add content, review, etc.</p>
-        </div>
+        {/* Today's Pick section */}
+        <TodaysPick />
+        {/* TODO: Add ActivityFeed, ReviewWords */}
       </div>
-    </div>
+    </main>
   );
 };
 
