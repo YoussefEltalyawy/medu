@@ -23,7 +23,7 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
       cornerRadius={25}
       className={`bg-brand-light-green text-brand-light-green px-5 py-5 flex flex-col gap-2 min-w-[180px] before:bg-brand-green ${className}`}
     >
-      <div className="flex items-center gap-2 text-light-green text-xl font-medium">
+      <div className="flex items-center gap-2 text-light-green text-lg font-medium">
         {icon && <span className="text-lg">{icon}</span>}
         <span>{title}</span>
       </div>

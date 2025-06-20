@@ -1,29 +1,52 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
+import { Squircle } from 'corner-smoothing';
+import VocabularyTab from '@/components/Learn/VocabularyTab';
+import FlashcardsTab from '@/components/Learn/FlashcardsTab';
 
 const LearnPage = () => {
+  const [activeTab, setActiveTab] = useState<'Flashcards' | 'Vocabulary' | 'Journal'>('Vocabulary');
+
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Learn</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Flashcards Tab */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Flashcards</h2>
-          <p className="text-gray-600">SRS review UI with flip, reveal, mark known/unknown.</p>
+    <main className="min-h-screen py-8 px-4 md:px-12">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-[#082408]">Learn</h1>
+        
+        {/* Tab Navigation */}
+        <div className="flex space-x-2 mb-6">
+          <button
+            onClick={() => setActiveTab('Flashcards')}
+            className={`px-4 py-2 rounded-full ${activeTab === 'Flashcards' ? 'bg-[#082408] text-white' : 'bg-gray-200 text-gray-700'}`}
+          >
+            Flashcards
+          </button>
+          <button
+            onClick={() => setActiveTab('Vocabulary')}
+            className={`px-4 py-2 rounded-full ${activeTab === 'Vocabulary' ? 'bg-[#082408] text-white' : 'bg-gray-200 text-gray-700'}`}
+          >
+            Vocabulary
+          </button>
+          <button
+            onClick={() => setActiveTab('Journal')}
+            className={`px-4 py-2 rounded-full ${activeTab === 'Journal' ? 'bg-[#082408] text-white' : 'bg-gray-200 text-gray-700'}`}
+          >
+            Journal
+          </button>
         </div>
 
-        {/* Vocabulary Tab */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Vocabulary</h2>
-          <p className="text-gray-600">Word list grouped by status (Learning / Practicing / Mastered).</p>
-        </div>
-
-        {/* Progress Tab */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Progress</h2>
-          <p className="text-gray-600">Goal creation and editing, progress bar for goals, reflection journal.</p>
+        {/* Tab Content */}
+        <div className="mt-4">
+          {activeTab === 'Flashcards' && <FlashcardsTab />}
+          {activeTab === 'Vocabulary' && <VocabularyTab />}
+          {activeTab === 'Journal' && (
+            <div className="text-center py-12">
+              <h2 className="text-xl text-gray-500">Journal feature coming soon</h2>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 
