@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Manrope } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 import NavBar from "../components/NavBar";
 import { AuthProvider } from '@/contexts/AuthContext'
+import { Toaster } from "@/components/ui/sonner"
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 const manrope = Manrope({
   variable: "--font-manrope",
   subsets: ["latin"],
@@ -32,6 +29,7 @@ export default function RootLayout({
         <AuthProvider>
           <NavBar />
           {children}
+          <Toaster />
         </AuthProvider>
       </body>
     </html>

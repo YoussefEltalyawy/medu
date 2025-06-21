@@ -3,6 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { Squircle } from "corner-smoothing";
 import { createClient } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 
 interface FlashcardWord {
   id: string;
@@ -10,25 +14,42 @@ interface FlashcardWord {
   english: string;
   example: string | null;
   status: "learning" | "familiar" | "mastered";
+  isOptimistic?: boolean;
+}
+
+interface ReviewStats {
+  learning: number;
+  familiar: number;
+  mastered: number;
+  dueForReview: number;
+  reviewedToday: number;
+  total: number;
 }
 
 const FlashcardsTab: React.FC = () => {
-  const [words, setWords] = useState<FlashcardWord[]>([]);
+  const [allWords, setAllWords] = useState<FlashcardWord[]>([]);
+  const [reviewWords, setReviewWords] = useState<FlashcardWord[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reviewComplete, setReviewComplete] = useState(false);
-  const [reviewStats, setReviewStats] = useState({
+  const [reviewStats, setReviewStats] = useState<ReviewStats>({
     learning: 0,
     familiar: 0,
     mastered: 0,
+    dueForReview: 0,
+    reviewedToday: 0,
+    total: 0,
   });
-  const [reviewMode, setReviewMode] = useState(false);
+  const [mode, setMode] = useState<"dashboard" | "review" | "browse">(
+    "dashboard"
+  );
+  const [browseIndex, setBrowseIndex] = useState(0);
 
   const supabase = createClient();
 
-  // Fetch vocabulary words for review
+  // Fetch all vocabulary words
   const fetchWords = async () => {
     try {
       setLoading(true);
@@ -41,28 +62,44 @@ const FlashcardsTab: React.FC = () => {
         return;
       }
 
-      // Get words that are due for review or new words
-      // In a real SRS system, you would check next_review date
-      // For now, we'll just get a random selection of words
+      // Get all vocabulary words for the user
       const { data, error } = await supabase
         .from("vocabulary_words")
-        .select("id, german, english, example, status")
+        .select("id, german, english, example, status, last_reviewed")
         .eq("user_id", user.id)
-        .limit(10);
+        .order("german", { ascending: true });
 
       if (error) throw error;
 
-      if (!data || data.length === 0) {
-        setError(
-          "No vocabulary words found. Add some words in the Vocabulary tab."
-        );
-        setLoading(false);
-        return;
-      }
+      const words = data || [];
 
-      // Shuffle the words
-      const shuffled = [...data].sort(() => Math.random() - 0.5);
-      setWords(shuffled);
+      // Filter words for review (learning and familiar)
+      const wordsForReview = words.filter(
+        (word) => word.status === "learning" || word.status === "familiar"
+      );
+
+      // Calculate today's date for comparison
+      const today = new Date().toDateString();
+      const reviewedToday = words.filter(
+        (word) =>
+          word.last_reviewed &&
+          new Date(word.last_reviewed).toDateString() === today
+      ).length;
+
+      // Calculate stats
+      const stats = {
+        learning: words.filter((w) => w.status === "learning").length,
+        familiar: words.filter((w) => w.status === "familiar").length,
+        mastered: words.filter((w) => w.status === "mastered").length,
+        dueForReview: wordsForReview.length,
+        reviewedToday: reviewedToday,
+        total: words.length,
+      };
+
+      setAllWords(words);
+      setReviewWords(wordsForReview);
+      setReviewStats(stats);
+      setError(null);
     } catch (err) {
       console.error("Error fetching flashcards:", err);
       setError("Failed to load flashcards");
@@ -71,12 +108,52 @@ const FlashcardsTab: React.FC = () => {
     }
   };
 
-  // Update word status after review
+  // Update word status with optimistic update
   const updateWordStatus = async (
     id: string,
     newStatus: "learning" | "familiar" | "mastered"
   ) => {
+    // Find the original word for potential rollback
+    const originalWord = allWords.find((word) => word.id === id);
+    if (!originalWord) return;
+
     try {
+      // Optimistic update - update status immediately
+      const updatedWord = {
+        ...originalWord,
+        status: newStatus,
+        isOptimistic: true,
+      };
+
+      // Update all words list
+      setAllWords((prev) =>
+        prev.map((word) => (word.id === id ? updatedWord : word))
+      );
+
+      // Update review words list
+      setReviewWords((prev) =>
+        prev.map((word) => (word.id === id ? updatedWord : word))
+      );
+
+      // Update stats optimistically
+      setReviewStats((prev) => ({
+        ...prev,
+        [originalWord.status]: Math.max(
+          0,
+          prev[originalWord.status as keyof ReviewStats] - 1
+        ),
+        [newStatus]: prev[newStatus as keyof ReviewStats] + 1,
+        reviewedToday: prev.reviewedToday + 1,
+        dueForReview:
+          newStatus === "mastered"
+            ? Math.max(0, prev.dueForReview - 1)
+            : prev.dueForReview,
+      }));
+
+      // Move to next card
+      goToNextCard();
+
+      // Background database update
       const { error } = await supabase
         .from("vocabulary_words")
         .update({
@@ -87,24 +164,52 @@ const FlashcardsTab: React.FC = () => {
 
       if (error) throw error;
 
-      // Update review stats
+      // Mark as no longer optimistic
+      setAllWords((prev) =>
+        prev.map((word) =>
+          word.id === id ? { ...word, isOptimistic: false } : word
+        )
+      );
+      setReviewWords((prev) =>
+        prev.map((word) =>
+          word.id === id ? { ...word, isOptimistic: false } : word
+        )
+      );
+    } catch (error) {
+      console.error("Error updating word status:", error);
+
+      // Revert optimistic updates on error
+      setAllWords((prev) =>
+        prev.map((word) =>
+          word.id === id ? { ...originalWord, isOptimistic: false } : word
+        )
+      );
+      setReviewWords((prev) =>
+        prev.map((word) =>
+          word.id === id ? { ...originalWord, isOptimistic: false } : word
+        )
+      );
+
+      // Revert stats
       setReviewStats((prev) => ({
         ...prev,
-        [newStatus]: prev[newStatus] + 1,
+        [originalWord.status]:
+          prev[originalWord.status as keyof ReviewStats] + 1,
+        [newStatus]: Math.max(0, prev[newStatus as keyof ReviewStats] - 1),
+        reviewedToday: Math.max(0, prev.reviewedToday - 1),
+        dueForReview:
+          newStatus === "mastered" ? prev.dueForReview + 1 : prev.dueForReview,
       }));
 
-      // Move to next card
-      goToNextCard();
-    } catch (err) {
-      console.error("Error updating word status:", err);
       setError("Failed to update word status");
+      toast.error("Failed to update word status");
     }
   };
 
   const goToNextCard = () => {
     setFlipped(false);
 
-    if (currentIndex < words.length - 1) {
+    if (currentIndex < reviewWords.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
       setReviewComplete(true);
@@ -115,8 +220,28 @@ const FlashcardsTab: React.FC = () => {
     setCurrentIndex(0);
     setFlipped(false);
     setReviewComplete(false);
-    setReviewStats({ learning: 0, familiar: 0, mastered: 0 });
     fetchWords();
+  };
+
+  const startReview = () => {
+    if (reviewWords.length === 0) {
+      toast.error("No cards available to review. Add some words first!");
+      return;
+    }
+    setMode("review");
+    setCurrentIndex(0);
+    setFlipped(false);
+    setReviewComplete(false);
+  };
+
+  const startBrowse = () => {
+    if (allWords.length === 0) {
+      toast.error("No cards available to browse. Add some words first!");
+      return;
+    }
+    setMode("browse");
+    setBrowseIndex(0);
+    setFlipped(false);
   };
 
   useEffect(() => {
@@ -131,168 +256,307 @@ const FlashcardsTab: React.FC = () => {
     return (
       <div className="text-center py-8">
         <p className="text-red-500 mb-4">{error}</p>
-        <button
+        <Button
           onClick={() => fetchWords()}
           className="bg-[#082408] text-white px-4 py-2 rounded-full hover:bg-opacity-90"
         >
           Try Again
-        </button>
+        </Button>
       </div>
     );
   }
 
   if (reviewComplete) {
     return (
-      <div className="text-center py-8">
+      <div className="text-center p-6">
         <h2 className="text-2xl font-bold text-[#082408] mb-6">
-          Review Complete!
+          Review Complete! 🎉
         </h2>
 
-        <div className="flex justify-center space-x-8 mb-8">
-          <div className="text-center">
+        <div className="grid grid-cols-3 gap-6 mb-8 max-w-2xl mx-auto">
+          <div className="bg-white p-4 rounded-lg shadow-sm">
             <div className="text-3xl font-bold text-[#240808]">
               {reviewStats.learning}
             </div>
             <div className="text-sm text-gray-600">Learning</div>
           </div>
-          <div className="text-center">
+          <div className="bg-white p-4 rounded-lg shadow-sm">
             <div className="text-3xl font-bold text-[#4E4211]">
               {reviewStats.familiar}
             </div>
             <div className="text-sm text-gray-600">Familiar</div>
           </div>
-          <div className="text-center">
+          <div className="bg-white p-4 rounded-lg shadow-sm">
             <div className="text-3xl font-bold text-[#082408]">
               {reviewStats.mastered}
             </div>
             <div className="text-sm text-gray-600">Mastered</div>
           </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm col-span-3">
+            <div className="text-lg font-semibold text-gray-800 mb-2">
+              Today&apos;s Progress
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">
+                Reviewed: {reviewStats.reviewedToday} cards
+              </span>
+              <span className="text-sm text-gray-600">
+                Due: {reviewStats.dueForReview} cards
+              </span>
+            </div>
+          </div>
         </div>
 
-        <button
-          onClick={resetReview}
-          className="bg-[#082408] text-white px-6 py-3 rounded-full hover:bg-opacity-90 text-lg"
-        >
-          Start New Review
-        </button>
+        <div className="flex justify-center space-x-4">
+          <Button
+            onClick={resetReview}
+            className="bg-[#082408] text-white px-6 py-3 rounded-full hover:bg-opacity-90 text-lg"
+          >
+            Start New Review
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setReviewComplete(false);
+              setMode("dashboard");
+            }}
+            className="px-6 py-3 rounded-full text-lg"
+          >
+            Return
+          </Button>
+        </div>
       </div>
     );
   }
 
-  if (reviewMode) {
-    const currentWord = words[currentIndex];
+  const renderFlashcard = (word: FlashcardWord, isReview: boolean = true) => {
+    const statusColors = {
+      learning: "bg-red-100 text-red-800",
+      familiar: "bg-yellow-100 text-yellow-800",
+      mastered: "bg-green-100 text-green-800",
+    };
+
+    const statusText = {
+      learning: "Learning",
+      familiar: "Familiar",
+      mastered: "Mastered",
+    };
+
+    const totalCards = isReview ? reviewWords.length : allWords.length;
+    const currentCardIndex = isReview ? currentIndex : browseIndex;
 
     return (
-      <div>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-[#082408]">
-            Flashcard Review
-          </h2>
-          <div className="text-sm text-gray-600">
-            Card {currentIndex + 1} of {words.length}
+      <div className="flex flex-col w-full">
+        {/* Progress Bar */}
+        {isReview && (
+          <div className="w-full mb-6">
+            <div className="flex justify-between text-sm text-gray-600 mb-1">
+              <span>Progress</span>
+              <span>
+                {currentCardIndex + 1} / {totalCards}
+              </span>
+            </div>
+            <Progress
+              value={(currentCardIndex / totalCards) * 100}
+              className="h-2 bg-gray-200"
+            />
           </div>
-        </div>
+        )}
 
         {/* Flashcard */}
-        <div className="flex justify-center mb-8">
-          <div
-            className="w-full max-w-lg cursor-pointer"
-            onClick={() => setFlipped(!flipped)}
-          >
-            <Squircle
-              borderWidth={2}
-              cornerRadius={25}
-              className={`bg-white p-8 h-64 flex items-center justify-center transition-all duration-300 ${
-                flipped ? "bg-[#F4F4F4]" : ""
-              } before:bg-white`}
+        <div
+          className="w-full cursor-pointer transition-transform hover:scale-[1.01]"
+          onClick={() => setFlipped(!flipped)}
+        >
+          <Card className="relative overflow-hidden">
+            {/* Status Badge */}
+            <div
+              className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-medium ${
+                statusColors[word.status]
+              }`}
             >
-              <div className="text-center">
-                {!flipped ? (
-                  <>
-                    <h3 className="text-3xl font-bold mb-4">
-                      {currentWord.german}
-                    </h3>
-                    {currentWord.example && (
-                      <p className="text-gray-600 italic">
-                        "{currentWord.example}"
-                      </p>
-                    )}
-                    <p className="text-sm text-gray-500 mt-4">
-                      Click to reveal translation
+              {statusText[word.status]}
+            </div>
+
+            <CardContent className="p-8 min-h-64 flex items-center justify-center">
+              {!flipped ? (
+                <div className="text-center">
+                  <h3 className="text-3xl font-bold mb-4">{word.german}</h3>
+                  {word.example && (
+                    <p className="text-gray-600 italic">
+                      &ldquo;{word.example}&rdquo;
                     </p>
-                  </>
-                ) : (
-                  <>
-                    <h3 className="text-3xl font-bold mb-2">
-                      {currentWord.english}
-                    </h3>
-                    <p className="text-gray-600 mb-4">{currentWord.german}</p>
-                    {currentWord.example && (
-                      <p className="text-gray-600 italic">
-                        "{currentWord.example}"
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-            </Squircle>
-          </div>
+                  )}
+                  <p className="text-sm text-gray-500 mt-4">
+                    Click to reveal translation
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <h3 className="text-3xl font-bold mb-2">{word.english}</h3>
+                  <p className="text-gray-600 text-xl mb-4">{word.german}</p>
+                  {word.example && (
+                    <p className="text-gray-600 italic">
+                      &ldquo;{word.example}&rdquo;
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Control Buttons */}
-        <div className="flex justify-center space-x-4">
-          {flipped ? (
-            <>
-              <button
-                onClick={() => updateWordStatus(currentWord.id, "learning")}
-                className="bg-[#240808] text-white px-6 py-3 rounded-full hover:bg-opacity-90"
-              >
-                Learning
-              </button>
-              <button
-                onClick={() => updateWordStatus(currentWord.id, "familiar")}
-                className="bg-[#4E4211] text-white px-6 py-3 rounded-full hover:bg-opacity-90"
-              >
-                Familiar
-              </button>
-              <button
-                onClick={() => updateWordStatus(currentWord.id, "mastered")}
-                className="bg-[#082408] text-white px-6 py-3 rounded-full hover:bg-opacity-90"
-              >
-                Mastered
-              </button>
-            </>
+        <CardFooter className="flex justify-center space-x-4 mt-6">
+          {isReview ? (
+            flipped ? (
+              <>
+                <Button
+                  variant="outline"
+                  className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+                  onClick={() => updateWordStatus(word.id, "learning")}
+                  disabled={word.isOptimistic}
+                >
+                  Learning
+                </Button>
+                <Button
+                  variant="outline"
+                  className="bg-yellow-50 text-yellow-600 border-yellow-200 hover:bg-yellow-100"
+                  onClick={() => updateWordStatus(word.id, "familiar")}
+                  disabled={word.isOptimistic}
+                >
+                  Familiar
+                </Button>
+                <Button
+                  variant="outline"
+                  className="bg-green-50 text-green-600 border-green-200 hover:bg-green-100"
+                  onClick={() => updateWordStatus(word.id, "mastered")}
+                  disabled={word.isOptimistic}
+                >
+                  Mastered
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setFlipped(true)} variant="outline">
+                Reveal Answer
+              </Button>
+            )
           ) : (
-            <button
-              onClick={() => setFlipped(true)}
-              className="bg-gray-200 text-gray-800 px-6 py-3 rounded-full hover:bg-gray-300"
-            >
-              Reveal Answer
-            </button>
+            <div className="flex space-x-4">
+              <Button variant="outline" onClick={() => setFlipped(!flipped)}>
+                {flipped ? "Show Original" : "Show Translation"}
+              </Button>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() =>
+                    setBrowseIndex((prev) => Math.max(0, prev - 1))
+                  }
+                  disabled={browseIndex === 0}
+                >
+                  ←
+                </Button>
+                <span className="text-sm text-gray-500">
+                  {browseIndex + 1} / {allWords.length}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() =>
+                    setBrowseIndex((prev) =>
+                      Math.min(allWords.length - 1, prev + 1)
+                    )
+                  }
+                  disabled={browseIndex === allWords.length - 1}
+                >
+                  →
+                </Button>
+              </div>
+            </div>
           )}
+        </CardFooter>
+      </div>
+    );
+  };
+
+  if (mode === "review") {
+    if (reviewWords.length === 0) {
+      return (
+        <div className="text-center p-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+            No Cards to Review
+          </h2>
+          <p className="text-gray-600 mb-6">
+            All your words are mastered! Add more words to continue learning.
+          </p>
+          <Button variant="outline" onClick={() => setMode("dashboard")}>
+            Back to Dashboard
+          </Button>
         </div>
+      );
+    }
+
+    return (
+      <div className="p-4">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Flashcard Review</h2>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setMode("dashboard");
+              setFlipped(false);
+            }}
+          >
+            Exit Review
+          </Button>
+        </div>
+        {renderFlashcard(reviewWords[currentIndex], true)}
+      </div>
+    );
+  }
+
+  if (mode === "browse") {
+    return (
+      <div className="p-4">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Browse All Cards</h2>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setMode("dashboard");
+              setFlipped(false);
+            }}
+          >
+            Back to Dashboard
+          </Button>
+        </div>
+        {renderFlashcard(allWords[browseIndex], false)}
       </div>
     );
   }
 
   // Main dashboard view for flashcards
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 p-4">
       <div>
-        <h2 className="text-2xl font-bold  mb-6">Flashcard Review</h2>
-        <p className="text-gray-600 mb-8">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">
+          Flashcard Review
+        </h2>
+        <p className="text-gray-600">
           Review your vocabulary with spaced repetition
         </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Total Cards */}
         <Squircle
           cornerRadius={20}
-          className="bg-brand-blue p-6 before:bg-blue-100 h-24 sm:h-28 md:h-32 lg:h-36"
+          className="bg-brand-blue p-6 before:bg-blue-100 h-36"
         >
           <div className="flex flex-col h-full">
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-start">
               <div className="text-lg text-brand-light-blue font-medium">
                 Total Cards
               </div>
@@ -313,20 +577,21 @@ const FlashcardsTab: React.FC = () => {
                 </svg>
               </div>
             </div>
-            <div className="mt-auto text-right">
-              <div className="text-3xl font-bold text-brand-light-blue">
-                {words.length}
+            <div className="mt-auto">
+              <div className="text-4xl font-bold text-brand-light-blue">
+                {reviewStats.total}
               </div>
             </div>
           </div>
         </Squircle>
 
+        {/* Due for Review */}
         <Squircle
           cornerRadius={20}
-          className="bg-brand-yellow p-6 before:bg-orange-100"
+          className="bg-brand-yellow p-6 before:bg-yellow-100 h-36"
         >
           <div className="flex flex-col h-full">
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-start">
               <div className="text-lg text-brand-light-yellow font-medium">
                 Due for Review
               </div>
@@ -347,20 +612,21 @@ const FlashcardsTab: React.FC = () => {
                 </svg>
               </div>
             </div>
-            <div className="mt-auto text-right">
-              <div className="text-3xl font-bold text-brand-light-yellow">
-                2
+            <div className="mt-auto">
+              <div className="text-4xl font-bold text-brand-light-yellow">
+                {reviewStats.dueForReview}
               </div>
             </div>
           </div>
         </Squircle>
 
+        {/* Reviewed Today */}
         <Squircle
           cornerRadius={20}
-          className="bg-brand-green p-6 before:bg-green-100"
+          className="bg-brand-green p-6 before:bg-green-100 h-36"
         >
           <div className="flex flex-col h-full">
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-start">
               <div className="text-lg text-brand-light-green font-medium">
                 Reviewed Today
               </div>
@@ -376,36 +642,32 @@ const FlashcardsTab: React.FC = () => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M5 13l4 4L19 7"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
               </div>
             </div>
-            <div className="mt-auto text-right">
-              <div className="text-3xl font-bold text-brand-light-green">0</div>
+            <div className="mt-auto">
+              <div className="text-4xl font-bold text-brand-light-green">
+                {reviewStats.reviewedToday}
+              </div>
             </div>
           </div>
         </Squircle>
       </div>
 
       {/* Action Buttons */}
-      <div className="grid grid-cols-2 gap-4 mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
         <Squircle
           cornerRadius={20}
-          className="bg-white p-6 cursor-pointer hover:bg-gray-50 before:bg-white"
+          className="bg-white p-6 cursor-pointer hover:bg-gray-50 transition-all hover:-translate-y-1 before:bg-white h-full"
+          onClick={startReview}
         >
-          <button
-            onClick={() => {
-              setReviewMode(true);
-              setCurrentIndex(0);
-              setFlipped(false);
-            }}
-            className="w-full flex items-center"
-          >
-            <div className="bg-brand-light-blue p-3 rounded-full mr-4">
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-blue-100 rounded-full">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-brand-blue"
+                className="h-8 w-8 text-blue-600"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -414,28 +676,31 @@ const FlashcardsTab: React.FC = () => {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M14 5l7 7m0 0l-7 7m7-7H3"
+                  d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
                 />
               </svg>
             </div>
-            <div className="text-left">
-              <h3 className="font-semibold text-gray-800">
-                Start Review Session
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Start Review
               </h3>
-              <p className="text-sm text-gray-600">Review 2 cards due today</p>
+              <p className="text-sm text-gray-500">
+                Review cards with spaced repetition
+              </p>
             </div>
-          </button>
+          </div>
         </Squircle>
 
         <Squircle
           cornerRadius={20}
-          className="bg-white p-6 cursor-pointer hover:bg-gray-50 before:bg-white"
+          className="bg-white p-6 cursor-pointer hover:bg-gray-50 transition-all hover:-translate-y-1 before:bg-white h-full"
+          onClick={startBrowse}
         >
-          <button className="w-full flex items-center">
-            <div className="bg-brand-light-green p-3 rounded-full mr-4">
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-purple-100 rounded-full">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-brand-green"
+                className="h-8 w-8 text-purple-600"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -444,17 +709,19 @@ const FlashcardsTab: React.FC = () => {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  d="M4 6h16M4 12h16m-7 6h7"
                 />
               </svg>
             </div>
-            <div className="text-left">
-              <h3 className="font-semibold text-gray-800">Browse All Cards</h3>
-              <p className="text-sm text-gray-600">
-                Review all {words.length} flashcards
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Browse All Cards
+              </h3>
+              <p className="text-sm text-gray-500">
+                View and flip through all your cards
               </p>
             </div>
-          </button>
+          </div>
         </Squircle>
       </div>
 
@@ -462,7 +729,7 @@ const FlashcardsTab: React.FC = () => {
       <div className="mt-8">
         <h3 className="font-semibold text-gray-800 mb-4">Recent Cards</h3>
         <div className="space-y-4">
-          {words.slice(0, 3).map((word) => (
+          {allWords.slice(0, 3).map((word) => (
             <div key={word.id} className="bg-white p-4 rounded-lg shadow-sm">
               <div className="flex justify-between items-center">
                 <div>
@@ -489,6 +756,11 @@ const FlashcardsTab: React.FC = () => {
               </div>
             </div>
           ))}
+          {allWords.length === 0 && (
+            <p className="text-gray-500 text-center py-4">
+              No vocabulary words found. Add some words to get started!
+            </p>
+          )}
         </div>
       </div>
     </div>

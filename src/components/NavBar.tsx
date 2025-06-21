@@ -34,7 +34,7 @@ const NavBar = () => {
               href={item.href}
               className={`text-base px-3 py-2 font-medium ${
                 pathname === item.href
-                  ? "border-b-4 border-brand"
+                  ? "border-b-4 border-brand-green"
                   : "hover:text-black/70"
               }`}
             >
