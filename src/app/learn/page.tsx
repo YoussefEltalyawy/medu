@@ -1,14 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
-import { Squircle } from "corner-smoothing";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import VocabularyTab from "@/components/Learn/VocabularyTab";
 import FlashcardsTab from "@/components/Learn/FlashcardsTab";
+import ProgressTab from "@/components/Learn/ProgressTab";
 
 const LearnPage = () => {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<
-    "Flashcards" | "Vocabulary" | "Journal"
+    "Flashcards" | "Vocabulary" | "Progress"
   >("Vocabulary");
+
+  useEffect(() => {
+    // Check for tab parameter in URL
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'flashcards') {
+      setActiveTab("Flashcards");
+    }
+  }, [searchParams]);
 
   return (
     <main className="min-h-screen py-8 px-4 md:px-12">
@@ -19,33 +29,30 @@ const LearnPage = () => {
         <div className="flex space-x-2 mb-6">
           <button
             onClick={() => setActiveTab("Flashcards")}
-            className={`px-4 py-2 rounded-full ${
-              activeTab === "Flashcards"
-                ? "bg-[#082408] text-white"
-                : "bg-gray-200 text-gray-700"
-            }`}
+            className={`px-4 py-2 rounded-full ${activeTab === "Flashcards"
+              ? "bg-[#082408] text-white"
+              : "bg-gray-200 text-gray-700"
+              }`}
           >
             Flashcards
           </button>
           <button
             onClick={() => setActiveTab("Vocabulary")}
-            className={`px-4 py-2 rounded-full ${
-              activeTab === "Vocabulary"
-                ? "bg-[#082408] text-white"
-                : "bg-gray-200 text-gray-700"
-            }`}
+            className={`px-4 py-2 rounded-full ${activeTab === "Vocabulary"
+              ? "bg-[#082408] text-white"
+              : "bg-gray-200 text-gray-700"
+              }`}
           >
             Vocabulary
           </button>
           <button
-            onClick={() => setActiveTab("Journal")}
-            className={`px-4 py-2 rounded-full ${
-              activeTab === "Journal"
-                ? "bg-[#082408] text-white"
-                : "bg-gray-200 text-gray-700"
-            }`}
+            onClick={() => setActiveTab("Progress")}
+            className={`px-4 py-2 rounded-full ${activeTab === "Progress"
+              ? "bg-[#082408] text-white"
+              : "bg-gray-200 text-gray-700"
+              }`}
           >
-            Journal
+            Progress
           </button>
         </div>
 
@@ -53,13 +60,7 @@ const LearnPage = () => {
         <div className="mt-4">
           {activeTab === "Flashcards" && <FlashcardsTab />}
           {activeTab === "Vocabulary" && <VocabularyTab />}
-          {activeTab === "Journal" && (
-            <div className="text-center py-12">
-              <h2 className="text-xl text-gray-500">
-                Journal feature coming soon
-              </h2>
-            </div>
-          )}
+          {activeTab === "Progress" && <ProgressTab />}
         </div>
       </div>
     </main>

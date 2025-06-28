@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import NavBar from "../components/NavBar";
 import { AuthProvider } from '@/contexts/AuthContext'
+import { WatchedContentProvider } from '@/contexts/WatchedContentContext'
 import { Toaster } from "@/components/ui/sonner"
 
 const manrope = Manrope({
@@ -27,9 +28,11 @@ export default function RootLayout({
         className={`${manrope.variable} antialiased`}
       >
         <AuthProvider>
-          <NavBar />
-          {children}
-          <Toaster />
+          <WatchedContentProvider>
+            <NavBar />
+            {children}
+            <Toaster />
+          </WatchedContentProvider>
         </AuthProvider>
       </body>
     </html>

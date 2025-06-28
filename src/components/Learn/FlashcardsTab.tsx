@@ -1,252 +1,48 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Squircle } from "corner-smoothing";
-import { createClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { toast } from "sonner";
+import { useFlashcards, type FlashcardWord } from "@/hooks/useFlashcards";
 
-interface FlashcardWord {
-  id: string;
-  german: string;
-  english: string;
-  example: string | null;
-  status: "learning" | "familiar" | "mastered";
-  isOptimistic?: boolean;
-}
+const statusText = {
+  learning: "Learning",
+  familiar: "Familiar",
+  mastered: "Mastered",
+} as const;
 
-interface ReviewStats {
-  learning: number;
-  familiar: number;
-  mastered: number;
-  dueForReview: number;
-  reviewedToday: number;
-  total: number;
-}
+const statusColors = {
+  learning: "bg-red-100 text-red-800",
+  familiar: "bg-yellow-100 text-yellow-800",
+  mastered: "bg-green-100 text-green-800",
+} as const;
 
 const FlashcardsTab: React.FC = () => {
-  const [allWords, setAllWords] = useState<FlashcardWord[]>([]);
-  const [reviewWords, setReviewWords] = useState<FlashcardWord[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [flipped, setFlipped] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [reviewComplete, setReviewComplete] = useState(false);
-  const [reviewStats, setReviewStats] = useState<ReviewStats>({
-    learning: 0,
-    familiar: 0,
-    mastered: 0,
-    dueForReview: 0,
-    reviewedToday: 0,
-    total: 0,
-  });
-  const [mode, setMode] = useState<"dashboard" | "review" | "browse">(
-    "dashboard"
-  );
-  const [browseIndex, setBrowseIndex] = useState(0);
+  const {
+    // State
+    allWords,
+    reviewWords,
+    currentIndex,
+    browseIndex,
+    flipped,
+    loading,
+    error,
+    reviewComplete,
+    setReviewComplete,
+    mode,
+    reviewStats,
 
-  const supabase = createClient();
-
-  // Fetch all vocabulary words
-  const fetchWords = async () => {
-    try {
-      setLoading(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setError("You must be logged in to review flashcards");
-        return;
-      }
-
-      // Get all vocabulary words for the user
-      const { data, error } = await supabase
-        .from("vocabulary_words")
-        .select("id, german, english, example, status, last_reviewed")
-        .eq("user_id", user.id)
-        .order("german", { ascending: true });
-
-      if (error) throw error;
-
-      const words = data || [];
-
-      // Filter words for review (learning and familiar)
-      const wordsForReview = words.filter(
-        (word) => word.status === "learning" || word.status === "familiar"
-      );
-
-      // Calculate today's date for comparison
-      const today = new Date().toDateString();
-      const reviewedToday = words.filter(
-        (word) =>
-          word.last_reviewed &&
-          new Date(word.last_reviewed).toDateString() === today
-      ).length;
-
-      // Calculate stats
-      const stats = {
-        learning: words.filter((w) => w.status === "learning").length,
-        familiar: words.filter((w) => w.status === "familiar").length,
-        mastered: words.filter((w) => w.status === "mastered").length,
-        dueForReview: wordsForReview.length,
-        reviewedToday: reviewedToday,
-        total: words.length,
-      };
-
-      setAllWords(words);
-      setReviewWords(wordsForReview);
-      setReviewStats(stats);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching flashcards:", err);
-      setError("Failed to load flashcards");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Update word status with optimistic update
-  const updateWordStatus = async (
-    id: string,
-    newStatus: "learning" | "familiar" | "mastered"
-  ) => {
-    // Find the original word for potential rollback
-    const originalWord = allWords.find((word) => word.id === id);
-    if (!originalWord) return;
-
-    try {
-      // Optimistic update - update status immediately
-      const updatedWord = {
-        ...originalWord,
-        status: newStatus,
-        isOptimistic: true,
-      };
-
-      // Update all words list
-      setAllWords((prev) =>
-        prev.map((word) => (word.id === id ? updatedWord : word))
-      );
-
-      // Update review words list
-      setReviewWords((prev) =>
-        prev.map((word) => (word.id === id ? updatedWord : word))
-      );
-
-      // Update stats optimistically
-      setReviewStats((prev) => ({
-        ...prev,
-        [originalWord.status]: Math.max(
-          0,
-          prev[originalWord.status as keyof ReviewStats] - 1
-        ),
-        [newStatus]: prev[newStatus as keyof ReviewStats] + 1,
-        reviewedToday: prev.reviewedToday + 1,
-        dueForReview:
-          newStatus === "mastered"
-            ? Math.max(0, prev.dueForReview - 1)
-            : prev.dueForReview,
-      }));
-
-      // Move to next card
-      goToNextCard();
-
-      // Background database update
-      const { error } = await supabase
-        .from("vocabulary_words")
-        .update({
-          status: newStatus,
-          last_reviewed: new Date().toISOString(),
-        })
-        .eq("id", id);
-
-      if (error) throw error;
-
-      // Mark as no longer optimistic
-      setAllWords((prev) =>
-        prev.map((word) =>
-          word.id === id ? { ...word, isOptimistic: false } : word
-        )
-      );
-      setReviewWords((prev) =>
-        prev.map((word) =>
-          word.id === id ? { ...word, isOptimistic: false } : word
-        )
-      );
-    } catch (error) {
-      console.error("Error updating word status:", error);
-
-      // Revert optimistic updates on error
-      setAllWords((prev) =>
-        prev.map((word) =>
-          word.id === id ? { ...originalWord, isOptimistic: false } : word
-        )
-      );
-      setReviewWords((prev) =>
-        prev.map((word) =>
-          word.id === id ? { ...originalWord, isOptimistic: false } : word
-        )
-      );
-
-      // Revert stats
-      setReviewStats((prev) => ({
-        ...prev,
-        [originalWord.status]:
-          prev[originalWord.status as keyof ReviewStats] + 1,
-        [newStatus]: Math.max(0, prev[newStatus as keyof ReviewStats] - 1),
-        reviewedToday: Math.max(0, prev.reviewedToday - 1),
-        dueForReview:
-          newStatus === "mastered" ? prev.dueForReview + 1 : prev.dueForReview,
-      }));
-
-      setError("Failed to update word status");
-      toast.error("Failed to update word status");
-    }
-  };
-
-  const goToNextCard = () => {
-    setFlipped(false);
-
-    if (currentIndex < reviewWords.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      setReviewComplete(true);
-    }
-  };
-
-  const resetReview = () => {
-    setCurrentIndex(0);
-    setFlipped(false);
-    setReviewComplete(false);
-    fetchWords();
-  };
-
-  const startReview = () => {
-    if (reviewWords.length === 0) {
-      toast.error("No cards available to review. Add some words first!");
-      return;
-    }
-    setMode("review");
-    setCurrentIndex(0);
-    setFlipped(false);
-    setReviewComplete(false);
-  };
-
-  const startBrowse = () => {
-    if (allWords.length === 0) {
-      toast.error("No cards available to browse. Add some words first!");
-      return;
-    }
-    setMode("browse");
-    setBrowseIndex(0);
-    setFlipped(false);
-  };
-
-  useEffect(() => {
-    fetchWords();
-  }, []);
+    // Actions
+    setFlipped,
+    setMode,
+    setBrowseIndex,
+    updateWordStatus,
+    resetReview,
+    startReview,
+    startBrowse,
+  } = useFlashcards();
 
   if (loading) {
     return <div className="text-center py-8">Loading flashcards...</div>;
@@ -257,7 +53,7 @@ const FlashcardsTab: React.FC = () => {
       <div className="text-center py-8">
         <p className="text-red-500 mb-4">{error}</p>
         <Button
-          onClick={() => fetchWords()}
+          onClick={resetReview}
           className="bg-[#082408] text-white px-4 py-2 rounded-full hover:bg-opacity-90"
         >
           Try Again
@@ -330,20 +126,9 @@ const FlashcardsTab: React.FC = () => {
   }
 
   const renderFlashcard = (word: FlashcardWord, isReview: boolean = true) => {
-    const statusColors = {
-      learning: "bg-red-100 text-red-800",
-      familiar: "bg-yellow-100 text-yellow-800",
-      mastered: "bg-green-100 text-green-800",
-    };
-
-    const statusText = {
-      learning: "Learning",
-      familiar: "Familiar",
-      mastered: "Mastered",
-    };
-
     const totalCards = isReview ? reviewWords.length : allWords.length;
     const currentCardIndex = isReview ? currentIndex : browseIndex;
+    const status = word.status as keyof typeof statusColors;
 
     return (
       <div className="flex flex-col w-full">
@@ -371,11 +156,9 @@ const FlashcardsTab: React.FC = () => {
           <Card className="relative overflow-hidden">
             {/* Status Badge */}
             <div
-              className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-medium ${
-                statusColors[word.status]
-              }`}
+              className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-medium ${statusColors[status]}`}
             >
-              {statusText[word.status]}
+              {statusText[status]}
             </div>
 
             <CardContent className="p-8 min-h-64 flex items-center justify-center">
@@ -547,7 +330,6 @@ const FlashcardsTab: React.FC = () => {
           Review your vocabulary with spaced repetition
         </p>
       </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Total Cards */}
@@ -680,10 +462,16 @@ const FlashcardsTab: React.FC = () => {
                 />
               </svg>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">
-                Start Review
-              </h3>
+            <div className="w-full">
+              <div className="flex justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Start Review
+                </h3>
+                <span className="ml-2 bg-gray-100 px-2 py-1 rounded-full text-sm">
+                {reviewWords.length} {reviewWords.length === 1 ? 'card' : 'cards'}
+
+              </span>
+              </div>
               <p className="text-sm text-gray-500">
                 Review cards with spaced repetition
               </p>
@@ -713,10 +501,15 @@ const FlashcardsTab: React.FC = () => {
                 />
               </svg>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">
-                Browse All Cards
-              </h3>
+            <div className="w-full">
+              <div className="flex justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Browse All Cards
+                </h3>
+                <span className="ml-2 bg-gray-100 px-2 py-1 rounded-full text-sm">
+                  {allWords.length} {allWords.length === 1 ? 'card' : 'cards'}
+                </span>
+              </div>
               <p className="text-sm text-gray-500">
                 View and flip through all your cards
               </p>
