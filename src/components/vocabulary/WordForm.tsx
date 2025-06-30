@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -19,6 +19,14 @@ export const WordForm = ({ isOpen, onClose, onSubmit, editingWord }: WordFormPro
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    setFormData({
+      german: editingWord?.german || "",
+      english: editingWord?.english || "",
+      example: editingWord?.example || "",
+    });
+  }, [editingWord]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
