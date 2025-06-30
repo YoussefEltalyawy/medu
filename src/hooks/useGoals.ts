@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
 import type { Database } from "@/types/database.types";
 import { toast } from "sonner";
+import { addActivity } from "@/utils/activityLogger";
 
 type Goal = Database["public"]["Tables"]["goals"]["Row"];
 type GoalInsert = Database["public"]["Tables"]["goals"]["Insert"];

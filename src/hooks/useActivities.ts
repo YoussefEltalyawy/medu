@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
 import type { Database } from "@/types/database.types";
+import { addActivity } from "@/utils/activityLogger";
 
 type Activity = Database["public"]["Tables"]["activities"]["Row"];
 

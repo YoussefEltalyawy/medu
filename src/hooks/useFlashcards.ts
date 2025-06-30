@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { addActivity, updateWordsLearned } from '@/utils/activityLogger';
 
 export interface FlashcardWord {
   id: string;
@@ -151,6 +152,14 @@ export const useFlashcards = () => {
 
         if (error) throw error;
 
+        // If the new status is 'mastered', update words_learned in user_stats
+        if (newStatus === 'mastered') {
+          const masteredCount = allWords.filter((w) =>
+            w.id === id ? newStatus === 'mastered' : w.status === 'mastered'
+          ).length;
+          await updateWordsLearned(masteredCount);
+        }
+
         setAllWords((prev) =>
           prev.map((word) =>
             word.id === id ? { ...word, isOptimistic: false } : word
@@ -235,12 +244,7 @@ export const useFlashcards = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         const summary = `Finished Review Session: ${reviewedWords.length} word${reviewedWords.length === 1 ? '' : 's'} reviewed`;
-        await supabase.from('activities').insert({
-          user_id: user.id,
-          type: 'flashcard_review',
-          content: summary,
-          time: new Date().toISOString(),
-        });
+        await addActivity('flashcard_review', summary);
         setReviewedWords([]); // Reset for next session
       }
     };

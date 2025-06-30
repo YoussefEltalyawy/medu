@@ -1,6 +1,7 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { createClient } from '@/lib/supabase';
+import { addActivity, updateUserStats } from '@/utils/activityLogger';
 
 interface WatchedContentContextType {
   watchedContent: Set<string>;
@@ -58,102 +59,6 @@ export const WatchedContentProvider: React.FC<WatchedContentProviderProps> = ({ 
   // Check if episode is watched
   const isEpisodeWatched = (showId: number, seasonNumber: number, episodeNumber: number): boolean => {
     return watchedEpisodes.has(`${showId}-${seasonNumber}-${episodeNumber}`);
-  };
-
-  // Update user stats (streak, etc.)
-  const updateUserStats = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      // Get today's date
-      const today = new Date().toISOString().split('T')[0];
-
-      // Check if user has any activity today
-      const { data: todayActivities } = await supabase
-        .from('activities')
-        .select('id')
-        .eq('user_id', user.id)
-        .gte('time', `${today}T00:00:00`)
-        .lt('time', `${today}T23:59:59`)
-        .limit(1);
-
-      if (todayActivities && todayActivities.length > 0) {
-        // User has activity today, update streak
-        const { data: currentStats } = await supabase
-          .from('user_stats')
-          .select('current_streak, longest_streak, last_activity_date')
-          .eq('user_id', user.id)
-          .single();
-
-        if (currentStats) {
-          const lastActivityDate = currentStats.last_activity_date;
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-          let newStreak = currentStats.current_streak;
-
-          if (lastActivityDate === yesterdayStr) {
-            // Consecutive day, increment streak
-            newStreak = currentStats.current_streak + 1;
-          } else if (lastActivityDate !== today) {
-            // Not consecutive, reset streak to 1
-            newStreak = 1;
-          }
-
-          const newLongestStreak = Math.max(currentStats.longest_streak, newStreak);
-
-          // Update user stats
-          await supabase
-            .from('user_stats')
-            .upsert({
-              user_id: user.id,
-              current_streak: newStreak,
-              longest_streak: newLongestStreak,
-              last_activity_date: today,
-              updated_at: new Date().toISOString()
-            });
-        } else {
-          // Create new user stats
-          await supabase
-            .from('user_stats')
-            .insert({
-              user_id: user.id,
-              current_streak: 1,
-              longest_streak: 1,
-              last_activity_date: today,
-              updated_at: new Date().toISOString()
-            });
-        }
-      }
-    } catch (error) {
-      console.error('Error updating user stats:', error);
-    }
-  };
-
-  // Add activity to activities table
-  const addActivity = async (type: string, content: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      await supabase
-        .from('activities')
-        .insert({
-          user_id: user.id,
-          type: type,
-          content: content,
-          time: new Date().toISOString()
-        });
-
-      // Update user stats after adding activity
-      await updateUserStats();
-    } catch (error) {
-      console.error('Error adding activity:', error);
-    }
   };
 
   // Load all watched content at once

@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
 import type { Database } from "@/types/database.types";
 import { toast } from "sonner";
+import { addActivity } from '@/utils/activityLogger';
 
 type Reflection = Database["public"]["Tables"]["reflections"]["Row"];
 type ReflectionInsert = Database["public"]["Tables"]["reflections"]["Insert"];
@@ -44,14 +45,7 @@ export function useReflections() {
       if (error) throw error;
       
       // Add activity for the reflection
-      await supabase
-        .from("activities")
-        .insert({
-          user_id: user.id,
-          type: "reflection_added",
-          content: `Added a journal entry (${reflection.study_time} minutes of study time)`,
-          time: new Date().toISOString()
-        });
+      await addActivity('reflection_added', `Added a journal entry (${reflection.study_time} minutes of study time)`);
       
       toast.success("Journal entry saved successfully!");
       return true;
