@@ -41,6 +41,7 @@ export const useFlashcards = () => {
     reviewedToday: 0,
     total: 0,
   });
+  const [reviewedWords, setReviewedWords] = useState<{ word: string; status: string }[]>([]);
 
   const supabase = createClient();
 
@@ -125,6 +126,12 @@ export const useFlashcards = () => {
           dueForReview:
             newStatus === 'mastered' ? Math.max(0, prev.dueForReview - 1) : prev.dueForReview,
         }));
+
+        // Track reviewed words for activity logging
+        setReviewedWords((prev) => [
+          ...prev,
+          { word: originalWord.german, status: newStatus.charAt(0).toUpperCase() + newStatus.slice(1) },
+        ]);
 
         // Move to next card after updating the state
         setFlipped(false);
@@ -220,6 +227,26 @@ export const useFlashcards = () => {
   const getReviewWordsCount = useCallback(() => {
     return reviewWords.length;
   }, [reviewWords.length]);
+
+  // Log activity at the end of review session
+  useEffect(() => {
+    const logReviewActivity = async () => {
+      if (reviewComplete && reviewedWords.length > 0) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const summary = `Finished Review Session: ${reviewedWords.length} word${reviewedWords.length === 1 ? '' : 's'} reviewed`;
+        await supabase.from('activities').insert({
+          user_id: user.id,
+          type: 'flashcard_review',
+          content: summary,
+          time: new Date().toISOString(),
+        });
+        setReviewedWords([]); // Reset for next session
+      }
+    };
+    logReviewActivity();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewComplete]);
 
   useEffect(() => {
     fetchWords();
