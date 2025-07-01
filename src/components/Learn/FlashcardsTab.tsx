@@ -446,10 +446,10 @@ const FlashcardsTab: React.FC = () => {
           onClick={startReview}
         >
           <div className="flex items-center space-x-4">
-            <div className="p-3 bg-blue-100 rounded-full">
+            <div className="p-3 bg-blue-900 rounded-full">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8 text-blue-600"
+                className="h-8 w-8 text-blue-100"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -467,7 +467,7 @@ const FlashcardsTab: React.FC = () => {
                 <h3 className="text-lg font-semibold">
                   Start Review
                 </h3>
-                <span className="ml-2 bg-gray-100 px-2 py-1 rounded-full text-sm">
+                <span className="ml-2 bg-gray-100 dark:bg-black/60 px-2 py-1 rounded-full text-sm">
                   {reviewWords.length} {reviewWords.length === 1 ? 'card' : 'cards'}
 
                 </span>
@@ -485,10 +485,10 @@ const FlashcardsTab: React.FC = () => {
           onClick={startBrowse}
         >
           <div className="flex items-center space-x-4">
-            <div className="p-3 bg-purple-100 rounded-full">
+            <div className="p-3 bg-purple-900 rounded-full">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8 text-purple-600"
+                className="h-8 w-8 text-purple-100"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -506,7 +506,7 @@ const FlashcardsTab: React.FC = () => {
                 <h3 className="text-lg font-semibold">
                   Browse All Cards
                 </h3>
-                <span className="ml-2 bg-gray-100 px-2 py-1 rounded-full text-sm">
+                <span className="ml-2 bg-gray-100 dark:bg-black/60 px-2 py-1 rounded-full text-sm">
                   {allWords.length} {allWords.length === 1 ? 'card' : 'cards'}
                 </span>
               </div>
