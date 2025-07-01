@@ -118,7 +118,7 @@ const ForYouRecommendations: React.FC = () => {
           </h3>
 
           {/* Type at bottom-right */}
-          <div className="absolute bottom-4 right-4 text-xs text-white bg-[#082408] px-3 py-1 rounded-full">
+          <div className="absolute bottom-4 right-4 text-xs text-white bg-brand-accent px-3 py-1 rounded-full">
             {type === "movie" ? "Movie" : "TV Show"}
           </div>
         </div>

@@ -35,8 +35,8 @@ const VocabularyTab: React.FC = () => {
   const [wordToDelete, setWordToDelete] = useState<string | null>(null);
 
   const stats = getReviewStats();
-  const filteredWords = filterStatus === "all" 
-    ? words 
+  const filteredWords = filterStatus === "all"
+    ? words
     : words.filter((word) => word.status === filterStatus);
 
   const handleAddWord = async (data: { german: string; english: string; example?: string }) => {
@@ -87,14 +87,14 @@ const VocabularyTab: React.FC = () => {
   return (
     <div className="space-y-8">
       <h2 className="text-2xl font-bold mb-6">Vocabulary Tracker</h2>
-      
+
       {/* Progress Cards */}
       <div className="grid grid-cols-3 gap-6 mb-8 h-24 sm:h-28 md:h-32 lg:h-36">
         <StatusCard
           title="Mastered"
           count={stats.mastered}
           icon={CheckCircle}
-          bgColor="bg-[#082408]"
+          bgColor="bg-brand-accent"
           textColor="text-[#e6f2e6]"
         />
         <StatusCard
@@ -115,15 +115,15 @@ const VocabularyTab: React.FC = () => {
 
       {/* Controls */}
       <div className="flex justify-between items-center mb-6">
-        <Button 
+        <Button
           onClick={() => setIsFormOpen(true)}
-          className="bg-[#082408] text-white px-4 py-2 rounded-full hover:bg-opacity-90"
+          className="bg-brand-accent text-white px-4 py-2 rounded-full hover:bg-opacity-90"
         >
           <Plus className="mr-2 h-4 w-4" />
           Add New Word
         </Button>
 
-        <FilterButtons 
+        <FilterButtons
           currentFilter={filterStatus}
           onFilterChange={setFilterStatus}
         />

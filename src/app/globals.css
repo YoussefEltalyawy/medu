@@ -4,6 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
+ --color-brand-accent: #11434E;
  --color-brand-green: #082408;
  --color-brand-light-green: #DAF0DA;
  --color-brand-yellow: #4E4211;
@@ -56,15 +57,12 @@
 
 body {
   font-family: 'Manrope', sans-serif;
-  background: #F4F4F4;
-  color: #082408;
   margin: 0;
   padding: 0;
 }
 
 html {
   font-family: 'Manrope', sans-serif;
-  background: #F4F4F4;
 }
 
 * {
@@ -107,9 +105,9 @@ html {
 }
 
 .dark {
- --background: oklch(0.129 0.042 264.695);
+ --background: #0B0B0B;
  --foreground: oklch(0.984 0.003 247.858);
- --card: oklch(0.208 0.042 265.755);
+ --card: #0F0F0F;
  --card-foreground: oklch(0.984 0.003 247.858);
  --popover: oklch(0.208 0.042 265.755);
  --popover-foreground: oklch(0.984 0.003 247.858);
@@ -175,3 +173,18 @@ html {
   color: #000000aa !important;
 }
 
+.custom-bullet li {
+  position: relative;
+}
+.custom-bullet li::marker {
+  font-size: 1.5em;
+  color: var(--color-brand-accent, #11434E);
+}
+
+::placeholder {
+  color: #212121dc;
+}
+
+.dark ::placeholder {
+  color: #bbbbbbcc;
+}

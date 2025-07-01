@@ -115,7 +115,7 @@ export const WordForm = ({ isOpen, onClose, onSubmit, editingWord }: WordFormPro
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting || !formData.german.trim() || !formData.english.trim()}
-              className="bg-[#082408] text-white px-4 py-2 rounded-full hover:bg-opacity-90"
+              className="bg-brand-accent text-white px-4 py-2 rounded-full hover:bg-opacity-90"
             >
               {isSubmitting ? "Saving..." : editingWord ? "Save Changes" : "Add Word"}
             </Button>

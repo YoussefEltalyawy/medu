@@ -10,7 +10,7 @@ export const ErrorState = ({ error, onRetry }: ErrorStateProps) => (
     <p className="text-red-500 mb-4">{error}</p>
     <Button
       onClick={onRetry}
-      className="bg-[#082408] text-white px-4 py-2 rounded-full hover:bg-opacity-90"
+      className="bg-brand-accent text-white px-4 py-2 rounded-full hover:bg-opacity-90"
     >
       Try Again
     </Button>

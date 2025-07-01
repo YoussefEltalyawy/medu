@@ -204,7 +204,7 @@ const TodaysPick: React.FC<TodaysPickProps> = ({ onContentClick }) => {
           </h3>
 
           {/* Type at bottom-right */}
-          <div className="absolute bottom-4 right-4 text-xs text-white bg-[#082408] px-3 py-1 rounded-full">
+          <div className="absolute bottom-4 right-4 text-xs text-white bg-brand-accent px-3 py-1 rounded-full">
             {type === 'movie' ? 'Movie' : 'TV Show'}
           </div>
 
@@ -222,7 +222,7 @@ const TodaysPick: React.FC<TodaysPickProps> = ({ onContentClick }) => {
   if (loading) {
     return (
       <div className="mt-8">
-        <h4 className="ml-2 text-black/40 mb-4">Today's Pick</h4>
+        <h4 className="ml-2 text-black/40 mb-2">Today's Pick</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
             <Squircle
@@ -241,7 +241,7 @@ const TodaysPick: React.FC<TodaysPickProps> = ({ onContentClick }) => {
   if (error) {
     return (
       <div className="mt-8">
-        <h4 className="ml-2 text-black/40 mb-4">Today's Pick</h4>
+        <h4 className="ml-2 text-black/40 mb-2">Today's Pick</h4>
         <Squircle
           borderWidth={2}
           cornerRadius={25}
@@ -255,7 +255,7 @@ const TodaysPick: React.FC<TodaysPickProps> = ({ onContentClick }) => {
 
   return (
     <div className="mt-8">
-      <h4 className="ml-2 text-black/40 mb-4">Today's Pick</h4>
+      <h4 className="ml-2 text-black/40 mb-2">Today's Pick</h4>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {movies.map((movie) => renderMediaCard(movie, 'movie'))}
         {tvShow && renderMediaCard(tvShow, 'tv')}

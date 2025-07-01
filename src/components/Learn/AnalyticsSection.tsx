@@ -72,14 +72,14 @@ const AnalyticsSection: React.FC = () => {
           title="Current Streak"
           count={currentStreak}
           icon={Clock}
-          bgColor="bg-[#082408]"
+          bgColor="bg-brand-accent"
           textColor="text-[#e6f2e6]"
         />
         <StatusCard
           title="Longest Streak"
           count={longestStreak}
           icon={CheckCircle}
-          bgColor="bg-[#082408]"
+          bgColor="bg-brand-accent"
           textColor="text-[#e6f2e6]"
         />
         <StatusCard
@@ -87,14 +87,14 @@ const AnalyticsSection: React.FC = () => {
           count={totalStudyMinutes}
           suffix="min"
           icon={Clock}
-          bgColor="bg-[#082408]"
+          bgColor="bg-brand-accent"
           textColor="text-[#e6f2e6]"
         />
         <StatusCard
           title="Words Learned"
           count={wordsLearned}
           icon={BookOpen}
-          bgColor="bg-[#082408]"
+          bgColor="bg-brand-accent"
           textColor="text-[#e6f2e6]"
         />
       </div>
@@ -138,7 +138,7 @@ const AnalyticsSection: React.FC = () => {
           <span className="text-2xl font-bold text-[#082408]">{stats?.current_level || "A1"}</span>
           <div className="w-full bg-gray-200 rounded-full h-3">
             <div
-              className="bg-[#082408] h-3 rounded-full"
+              className="bg-brand-accent h-3 rounded-full"
               style={{ width: `${stats?.level_progress || 0}%` }}
             />
           </div>

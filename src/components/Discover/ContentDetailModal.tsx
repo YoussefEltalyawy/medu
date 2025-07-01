@@ -290,7 +290,7 @@ const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
                   onClick={handleMarkAsWatched}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors ${isWatched
                     ? 'bg-green-600 text-white hover:bg-green-700'
-                    : 'bg-[#082408] text-white hover:bg-[#0a2a0a]'
+                    : 'bg-brand-accent text-white hover:bg-[#0a2a0a]'
                     }`}
                 >
                   {isWatched ? <Check size={16} /> : <Play size={16} />}
@@ -321,7 +321,7 @@ const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
                     key={season}
                     onClick={() => fetchEpisodes(season)}
                     className={`px-3 py-1 rounded-full whitespace-nowrap transition-colors ${activeSeason === season
-                      ? 'bg-[#082408] text-white'
+                      ? 'bg-brand-accent text-white'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                       }`}
                   >

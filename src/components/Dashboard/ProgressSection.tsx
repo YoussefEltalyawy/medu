@@ -78,9 +78,9 @@ const ProgressSection: React.FC = () => {
       <Squircle
         borderWidth={2}
         cornerRadius={25}
-        className="bg-[#5E7850]/20 text-brand-light-green px-5 py-6 flex flex-col gap-4 before:bg-white"
+        className="bg-[#5E7850]/20 dark:bg-[#1d1d1d] px-5 py-6 flex flex-col gap-4 before:bg-card"
       >
-        <h2 className="text-lg font-semibold text-brand-green">Weekly Goals</h2>
+        <h2 className="text-lg font-semibold dark:text-white">Weekly Goals</h2>
         <div className="flex flex-col gap-4">
           {goalsLoading ? (
             <div className="text-center py-4">Loading goals...</div>
@@ -103,9 +103,9 @@ const ProgressSection: React.FC = () => {
       <Squircle
         borderWidth={2}
         cornerRadius={25}
-        className="bg-[#5E7850]/20 text-brand-light-green px-5 py-6 flex flex-col gap-4 before:bg-white"
+        className="bg-[#5E7850]/20 dark:bg-[#1d1d1d] px-5 py-6 flex flex-col gap-4 before:bg-card"
       >
-        <h2 className="text-lg font-semibold text-brand-green">
+        <h2 className="text-lg font-semibold">
           Recent Activity
         </h2>
         {activitiesLoading ? (
@@ -113,7 +113,7 @@ const ProgressSection: React.FC = () => {
         ) : filteredActivities.length === 0 ? (
           <div className="text-center py-4 text-gray-500">No recent activity</div>
         ) : (
-          <ul className="list-disc list-inside text-brand-green space-y-1">
+          <ul className="list-disc list-inside  custom-bullet">
             {filteredActivities.slice(0, 5).map((activity) => (
               <li key={activity.id} className="text-sm">
                 {formatActivityContent(activity)}
@@ -128,13 +128,13 @@ const ProgressSection: React.FC = () => {
         <Squircle
           borderWidth={2}
           cornerRadius={25}
-          className="bg-[#5E7850]/20 text-brand-light-green px-5 py-6 flex flex-col gap-4 before:bg-white md:col-span-3"
+          className="bg-[#5E7850]/20 dark:bg-[#1d1d1d] px-5 py-6 flex flex-col gap-4 before:bg-card md:col-span-3"
         >
-          <h2 className="text-lg font-semibold text-brand-green">
+          <h2 className="text-lg font-semibold">
             What did you learn today?
           </h2>
           <textarea
-            className="w-full h-24 p-2 rounded-md bg-white/50 text-brand-green placeholder-black/40 focus:outline-none focus:ring-2 focus:ring-brand-green"
+            className="w-full h-24 p-2 rounded-md bg-white/50 dark:bg-[#111111] placeholder-black/40 focus:outline-none focus:ring-2 focus:ring-brand-accent"
             placeholder="Today I learned ......"
             value={journalContent}
             onChange={(e) => setJournalContent(e.target.value)}
@@ -142,21 +142,21 @@ const ProgressSection: React.FC = () => {
           <div className="flex justify-between items-center">
             {/* Study Time Input */}
             <div className="flex items-center gap-2">
-              <Clock size={16} className="text-brand-green" />
+              <Clock size={16} />
               <input
                 type="number"
                 min="1"
                 max="480"
                 value={studyTime}
                 onChange={(e) => setStudyTime(parseInt(e.target.value) || 30)}
-                className="w-16 p-1 rounded-md bg-white/50 text-brand-green text-center focus:outline-none focus:ring-2 focus:ring-brand-green"
+                className="w-16 p-1 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-brand-accent"
               />
-              <span className="text-brand-green text-sm">minutes</span>
+              <span className="text-sm">minutes</span>
             </div>
 
             {/* Save Button */}
             <Button
-              className="bg-brand-green text-white px-4 py-2 rounded-md text-sm"
+              className="bg-brand-accent text-white px-4 py-2 rounded-md text-sm"
               onClick={handleSaveJournal}
               disabled={reflectionLoading || !journalContent.trim()}
             >
@@ -169,19 +169,19 @@ const ProgressSection: React.FC = () => {
         <Squircle
           borderWidth={2}
           cornerRadius={25}
-          className="bg-[#5E7850]/20 text-brand-light-green px-5 py-6 flex flex-col gap-4 before:bg-white md:col-span-1"
+          className="bg-[#5E7850]/20 dark:bg-[#1d1d1d] px-5 py-6 flex flex-col gap-4 before:bg-card md:col-span-1"
         >
-          <h2 className="text-lg font-semibold text-brand-green">
+          <h2 className="text-lg font-semibold">
             Review Cards
           </h2>
-          <p className="text-brand-green text-base">
+          <p className="text-base">
             You have {wordsToReviewCount} words to review.
             <br />
             Keep your vocab sharp!
           </p>
           <div className="flex justify-center mt-auto">
             <Button
-              className="w-full bg-brand-green text-white px-4 py-2 rounded-md text-sm"
+              className="w-full bg-brand-accent text-white px-4 py-2 rounded-md text-sm"
               onClick={handleStartReview}
             >
               Start Review

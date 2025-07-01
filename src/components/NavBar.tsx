@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { ModeToggle } from "./ModeToggle";
 
 const NavBar = () => {
   const pathname = usePathname();
@@ -32,16 +33,16 @@ const NavBar = () => {
             <Link
               key={item.name}
               href={item.href}
-              className={`text-base px-3 py-2 font-medium ${
-                pathname === item.href
-                  ? "border-b-4 border-brand-green"
-                  : "hover:text-black/70"
-              }`}
+              className={`text-base px-3 py-2 font-medium ${pathname === item.href
+                ? "border-b-4 border-brand-accent"
+                : "hover:text-black/70"
+                }`}
             >
               {item.name}
             </Link>
           ))}
         </div>
+        <ModeToggle />
       </div>
     </nav>
   );

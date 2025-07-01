@@ -236,7 +236,7 @@ const DiscoverPage = () => {
             <button
               onClick={() => setSelectedFilter('all')}
               className={`px-4 py-3 rounded-full transition-colors ${selectedFilter === 'all'
-                ? 'bg-[#082408] text-white'
+                ? 'bg-brand-accent text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
             >
@@ -245,7 +245,7 @@ const DiscoverPage = () => {
             <button
               onClick={() => setSelectedFilter('movies')}
               className={`px-4 py-3 rounded-full transition-colors ${selectedFilter === 'movies'
-                ? 'bg-[#082408] text-white'
+                ? 'bg-brand-accent text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
             >
@@ -254,7 +254,7 @@ const DiscoverPage = () => {
             <button
               onClick={() => setSelectedFilter('tv')}
               className={`px-4 py-3 rounded-full transition-colors ${selectedFilter === 'tv'
-                ? 'bg-[#082408] text-white'
+                ? 'bg-brand-accent text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
             >

@@ -35,7 +35,7 @@ const JournalSection: React.FC = () => {
         <h3 className="text-xl font-semibold">Your Journal</h3>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-[#082408] text-white rounded-full"><Plus className="mr-2 w-4 h-4" /> Add Entry</Button>
+            <Button className="bg-brand-accent text-white rounded-full"><Plus className="mr-2 w-4 h-4" /> Add Entry</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -63,7 +63,7 @@ const JournalSection: React.FC = () => {
                   </FormItem>
                 )} />
                 <DialogFooter>
-                  <Button type="submit" className="bg-[#082408] text-white rounded-full flex-1">Add Entry</Button>
+                  <Button type="submit" className="bg-brand-accent text-white rounded-lg flex-1">Add Entry</Button>
                 </DialogFooter>
               </form>
             </Form>
@@ -78,13 +78,13 @@ const JournalSection: React.FC = () => {
         ) : reflections.length === 0 ? (
           <div className="text-center text-gray-500">No journal entries yet.</div>
         ) : reflections.map(ref => (
-          <Card key={ref.id} className="p-6 bg-white shadow-sm rounded-xl border border-gray-100">
+          <Card key={ref.id} className="p-6 bg-card shadow-sm rounded-xl border border-[#5E7850]/20 dark:border-[#1d1d1d]">
             <div className="flex items-center gap-2 mb-2">
-              <BookOpen className="w-5 h-5 text-[#4E4211]" />
+              <BookOpen className="w-5 h-5 text-brand-blue" />
               <span className="font-bold">{ref.date || ref.created_at?.slice(0, 10)}</span>
               <span className="ml-auto text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">{ref.study_time} min</span>
             </div>
-            <div className="text-gray-700 whitespace-pre-line">{ref.content}</div>
+            <div className="opacity-50 whitespace-pre-line">{ref.content}</div>
           </Card>
         ))}
       </div>

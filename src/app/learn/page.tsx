@@ -23,14 +23,14 @@ const LearnPage = () => {
   return (
     <main className="min-h-screen py-8 px-4 md:px-12">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-[#082408]">Learn</h1>
+        <h1 className="text-3xl font-bold mb-6 text">Learn</h1>
 
         {/* Tab Navigation */}
         <div className="flex space-x-2 mb-6">
           <button
             onClick={() => setActiveTab("Flashcards")}
             className={`px-4 py-2 rounded-full ${activeTab === "Flashcards"
-              ? "bg-[#082408] text-white"
+              ? "bg-brand-accent text-white"
               : "bg-gray-200 text-gray-700"
               }`}
           >
@@ -39,7 +39,7 @@ const LearnPage = () => {
           <button
             onClick={() => setActiveTab("Vocabulary")}
             className={`px-4 py-2 rounded-full ${activeTab === "Vocabulary"
-              ? "bg-[#082408] text-white"
+              ? "bg-brand-accent text-white"
               : "bg-gray-200 text-gray-700"
               }`}
           >
@@ -48,7 +48,7 @@ const LearnPage = () => {
           <button
             onClick={() => setActiveTab("Progress")}
             className={`px-4 py-2 rounded-full ${activeTab === "Progress"
-              ? "bg-[#082408] text-white"
+              ? "bg-brand-accent text-white"
               : "bg-gray-200 text-gray-700"
               }`}
           >

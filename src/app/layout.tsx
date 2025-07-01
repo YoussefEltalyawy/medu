@@ -5,6 +5,7 @@ import NavBar from "../components/NavBar";
 import { AuthProvider } from '@/contexts/AuthContext'
 import { WatchedContentProvider } from '@/contexts/WatchedContentContext'
 import { Toaster } from "@/components/ui/sonner"
+import { ThemeProvider } from "@/components/theme-provider";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -23,14 +24,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${manrope.variable} antialiased`}
       >
         <AuthProvider>
           <WatchedContentProvider>
             <NavBar />
-            {children}
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+            </ThemeProvider>
             <Toaster />
           </WatchedContentProvider>
         </AuthProvider>

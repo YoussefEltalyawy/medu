@@ -18,15 +18,15 @@ interface WordCardProps {
 }
 
 export const WordCard = ({ word, onEdit, onDelete, onStatusChange }: WordCardProps) => (
-  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+  <div className="bg-card rounded-2xl p-6 shadow-sm border border-[#5E7850]/20 dark:border-[#1d1d1d]">
     <div className="flex justify-between items-start">
       <div className="flex-1">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
+        <h3 className="text-xl font-bold mb-2">
           {word.german}
         </h3>
-        <p className="text-gray-600 mb-2">{word.english}</p>
+        <p className="opacity-50 mb-2">{word.english}</p>
         {word.example && (
-          <p className="text-gray-500 italic text-sm">
+          <p className="opacity-50 italic text-sm">
             &quot;{word.example}&quot;
           </p>
         )}

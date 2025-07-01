@@ -54,7 +54,7 @@ const FlashcardsTab: React.FC = () => {
         <p className="text-red-500 mb-4">{error}</p>
         <Button
           onClick={resetReview}
-          className="bg-[#082408] text-white px-4 py-2 rounded-full hover:bg-opacity-90"
+          className="bg-brand-accent text-white px-4 py-2 rounded-full hover:bg-opacity-90"
         >
           Try Again
         </Button>
@@ -106,7 +106,7 @@ const FlashcardsTab: React.FC = () => {
         <div className="flex justify-center space-x-4">
           <Button
             onClick={resetReview}
-            className="bg-[#082408] text-white px-6 py-3 rounded-full hover:bg-opacity-90 text-lg"
+            className="bg-brand-accent text-white px-6 py-3 rounded-full hover:bg-opacity-90 text-lg"
           >
             Start New Review
           </Button>
@@ -283,7 +283,7 @@ const FlashcardsTab: React.FC = () => {
     return (
       <div className="p-4">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Flashcard Review</h2>
+          <h2 className="text-2xl font-bold">Flashcard Review</h2>
           <Button
             variant="ghost"
             onClick={() => {
@@ -323,7 +323,7 @@ const FlashcardsTab: React.FC = () => {
   return (
     <div className="space-y-6 p-4">
       <div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">
+        <h2 className="text-3xl font-bold mb-2">
           Flashcard Review
         </h2>
         <p className="text-gray-600">
@@ -442,7 +442,7 @@ const FlashcardsTab: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
         <Squircle
           cornerRadius={20}
-          className="bg-white p-6 cursor-pointer hover:bg-gray-50 transition-all hover:-translate-y-1 before:bg-white h-full"
+          className="bg-[#5E7850]/20 dark:bg-[#1d1d1d] p-6 cursor-pointer  transition-all hover:-translate-y-1 before:bg-card h-full"
           onClick={startReview}
         >
           <div className="flex items-center space-x-4">
@@ -464,13 +464,13 @@ const FlashcardsTab: React.FC = () => {
             </div>
             <div className="w-full">
               <div className="flex justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold">
                   Start Review
                 </h3>
                 <span className="ml-2 bg-gray-100 px-2 py-1 rounded-full text-sm">
-                {reviewWords.length} {reviewWords.length === 1 ? 'card' : 'cards'}
+                  {reviewWords.length} {reviewWords.length === 1 ? 'card' : 'cards'}
 
-              </span>
+                </span>
               </div>
               <p className="text-sm text-gray-500">
                 Review cards with spaced repetition
@@ -481,7 +481,7 @@ const FlashcardsTab: React.FC = () => {
 
         <Squircle
           cornerRadius={20}
-          className="bg-white p-6 cursor-pointer hover:bg-gray-50 transition-all hover:-translate-y-1 before:bg-white h-full"
+          className="bg-[#5E7850]/20 dark:bg-[#1d1d1d] p-6 cursor-pointer  transition-all hover:-translate-y-1 before:bg-card h-full"
           onClick={startBrowse}
         >
           <div className="flex items-center space-x-4">
@@ -503,7 +503,7 @@ const FlashcardsTab: React.FC = () => {
             </div>
             <div className="w-full">
               <div className="flex justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold">
                   Browse All Cards
                 </h3>
                 <span className="ml-2 bg-gray-100 px-2 py-1 rounded-full text-sm">
@@ -523,7 +523,7 @@ const FlashcardsTab: React.FC = () => {
         <h3 className="font-semibold text-gray-800 mb-4">Recent Cards</h3>
         <div className="space-y-4">
           {allWords.slice(0, 3).map((word) => (
-            <div key={word.id} className="bg-white p-4 rounded-lg shadow-sm">
+            <div key={word.id} className="bg-card p-4 rounded-xl border border-[#5E7850]/20 dark:border-[#1d1d1d]">
               <div className="flex justify-between items-center">
                 <div>
                   <h4 className="font-medium">{word.german}</h4>
@@ -531,17 +531,17 @@ const FlashcardsTab: React.FC = () => {
                 </div>
                 <div>
                   {word.status === "learning" && (
-                    <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                    <span className="px-2 py-1 bg-red-800 text-red-100 text-xs rounded-full">
                       learning
                     </span>
                   )}
                   {word.status === "familiar" && (
-                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                    <span className="px-2 py-1 bg-yellow-800 text-yellow-100 text-xs rounded-full">
                       familiar
                     </span>
                   )}
                   {word.status === "mastered" && (
-                    <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                    <span className="px-2 py-1 bg-green-800 text-green-100 text-xs rounded-full">
                       mastered
                     </span>
                   )}

@@ -8,18 +8,18 @@ interface StatusBadgeProps {
 export const StatusBadge = ({ status, className = "" }: StatusBadgeProps) => {
   const statusConfig = {
     learning: {
-      bgColor: "bg-red-100",
-      textColor: "text-red-800",
+      bgColor: "bg-red-800",
+      textColor: "text-red-100",
       label: "Learning",
     },
     familiar: {
-      bgColor: "bg-yellow-100",
-      textColor: "text-yellow-800",
+      bgColor: "bg-yellow-800",
+      textColor: "text-yellow-100",
       label: "Familiar",
     },
     mastered: {
-      bgColor: "bg-green-100",
-      textColor: "text-green-800",
+      bgColor: "bg-green-800",
+      textColor: "text-green-100",
       label: "Mastered",
     },
   };

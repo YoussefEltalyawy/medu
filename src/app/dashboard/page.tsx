@@ -57,13 +57,13 @@ const DashboardPage: React.FC = () => {
     <main className="min-h-screen py-8 px-4 md:px-12">
       {/* <NavBar /> */}
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-[#082408]">
+        <h1 className="text-3xl font-bold mb-6">
           Good morning, Talyawy!
         </h1>
-        <h4 className="ml-2 text-black/40">Overview</h4>
+        <h4 className="ml-2 text-black/40 mb-2">Overview</h4>
         <OverviewCards />
-        <div className="mt-8">
-          <h4 className="ml-2 text-black/40">Progress</h4>
+        <div className="mt-4">
+          <h4 className="ml-2 text-black/40 mb-2">Progress</h4>
           <ProgressSection />
         </div>
         {/* Today's Pick section */}
