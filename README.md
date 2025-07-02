@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧠 Medu - Cozy Language Learning Hub
 
-## Getting Started
+[![Next.js](https://img.shields.io/badge/Next.js-15.3.3-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-2.50.0-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com/)
 
-First, run the development server:
+> A science-backed, all-in-one language learning platform designed with empathy, immersion, and usability in mind.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## ✨ Features
+
+### 🎯 **Smart Goal Tracking**
+- Personalized learning objectives with progress visualization
+- Flexible goal templates for vocabulary, study time, and skills
+- Achievement tracking with streak monitoring
+
+### 📚 **Spaced Repetition Flashcards**
+- Science-based SRS algorithm for optimal retention
+- Interactive flashcard interface with quality ratings
+- Automatic review scheduling based on performance
+
+### 🌐 **Curated Content Discovery**
+- Hand-picked learning materials (podcasts, articles, videos, songs)
+- Content filtering by difficulty level (A1-C2)
+- One-click vocabulary extraction from content
+
+### 📊 **Progress Analytics**
+- Comprehensive dashboard with daily progress overview
+- Study time tracking and reflection journaling
+- Performance insights and learning patterns
+
+### 👥 **Social Learning**
+- Activity feeds and progress sharing
+- Community-driven content recommendations
+- Motivation through social interaction
+
+## 🛠️ Tech Stack
+
+- **Framework:** [Next.js 15](https://nextjs.org/) (App Router)
+- **Language:** [TypeScript](https://www.typescriptlang.org/)
+- **Styling:** [Tailwind CSS 4](https://tailwindcss.com/)
+- **Database & Auth:** [Supabase](https://supabase.com/)
+- **UI Components:** [Radix UI](https://www.radix-ui.com/)
+- **Charts:** [Chart.js](https://www.chartjs.org/) & [Recharts](https://recharts.org/)
+- **Forms:** [React Hook Form](https://react-hook-form.com/) + [Zod](https://zod.dev/)
+- **Icons:** [Lucide React](https://lucide.dev/)
+
+## 📁 Project Structure
+
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── dashboard/         # Main dashboard
+│   ├── discover/          # Content discovery
+│   ├── learn/            # Learning tools
+│   ├── profile/          # User profile
+│   └── auth/             # Authentication
+├── components/            # Reusable UI components
+├── hooks/                # Custom React hooks
+├── contexts/             # React contexts
+├── types/                # TypeScript type definitions
+├── utils/                # Utility functions
+├── lib/                  # Library configurations
+└── constants/            # App constants
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🎨 Design Philosophy
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Medu is designed with a **cozy, clean, and modern aesthetic** inspired by:
+- **Craft.do** - Clean, distraction-free interface
+- **Cosmos** - Beautiful data visualization
+- **MyMind** - Intuitive user experience
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app prioritizes:
+- **Empathy** - Understanding learner needs and frustrations
+- **Immersion** - Creating an engaging learning environment
+- **Usability** - Intuitive navigation and clear information hierarchy
 
-## Learn More
 
-To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🙏 Acknowledgments
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Inspired by language learners seeking alternatives to traditional apps
+- Built with modern web technologies for optimal performance
+- Designed with accessibility and user experience in mind
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Made with ❤️ for language learners everywhere**
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
