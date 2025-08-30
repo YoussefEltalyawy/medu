@@ -1,148 +1,60 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { Squircle } from 'corner-smoothing';
-import { createClient } from '@/lib/supabase';
 import { Check } from 'lucide-react';
 import { useWatchedContent } from '@/contexts/WatchedContentContext';
+import { useLanguagePreference } from '@/contexts/LanguagePreferenceContext';
+import { contentService } from '@/services/ContentService';
+import { ContentItem } from '@/types/content';
 
-interface Movie {
-  id: number;
-  title: string;
-  poster_path: string;
-  backdrop_path: string;
-  overview: string;
-  release_date?: string;
-  runtime?: number;
-  vote_average?: number;
-  vote_count?: number;
-}
 
-interface TVShow {
-  id: number;
-  name: string;
-  poster_path: string;
-  backdrop_path: string;
-  overview: string;
-  first_air_date?: string;
-  episode_run_time?: number[];
-  vote_average?: number;
-  vote_count?: number;
-}
-
-interface UserProfile {
-  id: string;
-  target_language: string;
-}
 
 interface TodaysPickProps {
   onContentClick?: (content: any, type: 'movie' | 'tv') => void;
 }
 
 const TodaysPick: React.FC<TodaysPickProps> = ({ onContentClick }) => {
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [tvShow, setTvShow] = useState<TVShow | null>(null);
+  const [content, setContent] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userLanguage, setUserLanguage] = useState<string>('de'); // Default to German
 
   const { isContentWatched } = useWatchedContent();
+  const { languageMapping, isLoading: languageLoading } = useLanguagePreference();
 
-  // TMDB API configuration from environment variables
-  const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 
-  // Check if API key is available
-  if (!TMDB_API_KEY) {
-    console.error('TMDB API key is not defined in environment variables');
-  }
-
-  // Language mapping for TMDB API
-  const languageMapping: Record<string, { code: string, originalCode: string }> = {
-    'German': { code: 'de-DE', originalCode: 'de' },
-    'French': { code: 'fr-FR', originalCode: 'fr' },
-    'Spanish': { code: 'es-ES', originalCode: 'es' },
-    'English': { code: 'en-US', originalCode: 'en' },
-  };
-
   useEffect(() => {
-    // Fetch user's target language from Supabase
-    const fetchUserLanguage = async () => {
-      try {
-        const supabase = createClient();
-
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (user) {
-          // Get user profile with target language
-          const { data, error } = await supabase
-            .from('users')
-            .select('target_language')
-            .eq('id', user.id)
-            .single();
-
-          if (error) {
-            console.error('Error fetching user profile:', error);
-          } else if (data) {
-            // Set the user's target language
-            setUserLanguage(data.target_language || 'German'); // Default to German if not set
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching user data:', err);
+    const fetchTodaysContent = async () => {
+      // Don't fetch if language is still loading
+      if (languageLoading) {
+        return;
       }
-    };
 
-    fetchUserLanguage();
-  }, []);
-
-  useEffect(() => {
-    const fetchMoviesAndTVShow = async () => {
       try {
         setLoading(true);
+        setError(null);
 
-        // Get language codes based on user's target language
-        const languageCode = languageMapping[userLanguage]?.code || 'de-DE';
-        const originalLanguageCode = languageMapping[userLanguage]?.originalCode || 'de';
+        // Fetch content using ContentService
+        const response = await contentService.discoverContent({
+          language: languageMapping.code,
+          originalLanguage: languageMapping.originalCode,
+          page: 1,
+          contentType: 'all'
+        });
 
-        // Fetch movies in user's target language
-        const moviesResponse = await fetch(
-          `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&language=${languageCode}&with_original_language=${originalLanguageCode}&sort_by=popularity.desc&page=1`
-        );
-
-        if (!moviesResponse.ok) {
-          throw new Error('Failed to fetch movies');
-        }
-
-        const moviesData = await moviesResponse.json();
-
-        // Fetch TV shows in user's target language
-        const tvResponse = await fetch(
-          `https://api.themoviedb.org/3/discover/tv?api_key=${TMDB_API_KEY}&language=${languageCode}&with_original_language=${originalLanguageCode}&sort_by=popularity.desc&page=1`
-        );
-
-        if (!tvResponse.ok) {
-          throw new Error('Failed to fetch TV shows');
-        }
-
-        const tvData = await tvResponse.json();
-
-        // Get 2 random movies and 1 random TV show
-        const randomMovies = getRandomItems(moviesData.results, 2);
-        const randomTvShow = getRandomItems(tvData.results, 1)[0];
-
-        setMovies(randomMovies as Movie[]);
-        setTvShow(randomTvShow as TVShow);
+        // Get 3 random items (2 movies, 1 TV show if possible)
+        const randomContent = getRandomItems(response.results, 3);
+        setContent(randomContent);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
-        console.error('Error fetching recommendations:', err);
+        console.error('Error fetching today\'s content:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchMoviesAndTVShow();
-  }, [userLanguage]);
+    fetchTodaysContent();
+  }, [languageMapping, languageLoading]);
 
   // Helper function to get random items from an array with a date-based seed
   // This ensures recommendations stay consistent throughout the day but change daily
@@ -166,24 +78,21 @@ const TodaysPick: React.FC<TodaysPickProps> = ({ onContentClick }) => {
     return shuffled.slice(0, count);
   };
 
-  // Function to render a media card (movie or TV show)
-  const renderMediaCard = (item: Movie | TVShow, type: 'movie' | 'tv') => {
+  // Function to render a content card
+  const renderContentCard = (item: ContentItem) => {
     if (!item) return null;
 
-    const title = type === 'movie' ? (item as Movie).title : (item as TVShow).name;
-    const backdropPath = item.backdrop_path;
-    const posterPath = item.poster_path;
-    const isWatched = isContentWatched(item.id, type);
+    const isWatched = isContentWatched(item.id, item.type);
 
     const handleClick = () => {
       if (onContentClick) {
-        onContentClick(item, type);
+        onContentClick(item, item.type);
       }
     };
 
     return (
       <Squircle
-        key={item.id}
+        key={`${item.type}-${item.id}`}
         borderWidth={2}
         cornerRadius={25}
         className="relative overflow-hidden h-[200px] before:bg-black cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
@@ -191,8 +100,8 @@ const TodaysPick: React.FC<TodaysPickProps> = ({ onContentClick }) => {
       >
         <div className="absolute inset-0 z-0">
           <img
-            src={`${IMAGE_BASE_URL}${backdropPath || posterPath}`}
-            alt={title}
+            src={`${IMAGE_BASE_URL}${item.backdrop_path || item.poster_path}`}
+            alt={item.title}
             className="w-full h-full object-cover"
           />
         </div>
@@ -200,12 +109,12 @@ const TodaysPick: React.FC<TodaysPickProps> = ({ onContentClick }) => {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 p-4">
           {/* Title at bottom-left */}
           <h3 className="absolute bottom-4 left-4 text-white text-xl font-bold">
-            {title}
+            {item.title}
           </h3>
 
           {/* Type at bottom-right */}
           <div className="absolute bottom-4 right-4 text-xs text-white bg-brand-accent px-3 py-1 rounded-full">
-            {type === 'movie' ? 'Movie' : 'TV Show'}
+            {item.type === 'movie' ? 'Movie' : 'TV Show'}
           </div>
 
           {/* Watched indicator */}
@@ -257,8 +166,7 @@ const TodaysPick: React.FC<TodaysPickProps> = ({ onContentClick }) => {
     <div className="mt-8">
       <h4 className="ml-2 text-black/40 mb-2">Today's Pick</h4>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {movies.map((movie) => renderMediaCard(movie, 'movie'))}
-        {tvShow && renderMediaCard(tvShow, 'tv')}
+        {content.map((item) => renderContentCard(item))}
       </div>
     </div>
   );

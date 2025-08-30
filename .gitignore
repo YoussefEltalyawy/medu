@@ -44,3 +44,6 @@ next-env.d.ts
 plan.md
 tasks.md
 memory.md
+
+# YoYo AI version control directory
+.yoyo/

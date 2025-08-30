@@ -150,30 +150,43 @@ const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
   const handleMarkAsWatched = async () => {
     if (!content) return;
 
-    const result = await toggleContentWatched(content);
+    // Get current watched status for optimistic update
+    const currentWatchedStatus = isContentWatched(content.id, content.type);
+    const newWatchedStatus = !currentWatchedStatus;
 
-    if (result.success) {
-      // Show success toast
-      if (result.isWatched) {
-        toast.success('Added to watched list!', {
+    // Show immediate feedback
+    if (newWatchedStatus) {
+      toast.success('Added to watched list!', {
+        description: `${content.title || content.name} marked as watched`,
+        duration: 3000,
+      });
+    } else {
+      toast.info('Removed from watched list', {
+        description: `${content.title || content.name} removed from watched list`,
+        duration: 3000,
+      });
+    }
+
+    try {
+      // Perform the actual database update
+      const result = await toggleContentWatched(content);
+
+      if (!result.success) {
+        // Show error toast if the operation failed
+        toast.error('Failed to update watched status', {
           description: result.message,
-          duration: 3000,
+          duration: 4000,
         });
       } else {
-        toast.info('Removed from watched list', {
-          description: result.message,
-          duration: 3000,
-        });
+        // Refresh episodes if they're shown to update their watched status
+        if (showEpisodes && content.type === 'tv') {
+          fetchEpisodes(activeSeason);
+        }
       }
-
-      // Refresh episodes if they're shown
-      if (showEpisodes && content.type === 'tv') {
-        fetchEpisodes(activeSeason);
-      }
-    } else {
-      // Show error toast
+    } catch (error) {
+      // Show error toast on exception
       toast.error('Failed to update watched status', {
-        description: result.message,
+        description: 'Please try again',
         duration: 4000,
       });
     }
@@ -182,36 +195,171 @@ const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
   const handleEpisodeToggle = async (episode: Episode) => {
     if (!content) return;
 
-    const result = await toggleEpisodeWatched(episode, content.id, content.title || content.name || '');
+    // Optimistic UI update - update immediately
+    const newWatchedStatus = !episode.isWatched;
+    setEpisodes(prevEpisodes =>
+      prevEpisodes.map(ep =>
+        ep.id === episode.id
+          ? { ...ep, isWatched: newWatchedStatus }
+          : ep
+      )
+    );
 
-    if (result.success) {
-      // Show success toast
-      if (result.isWatched) {
-        toast.success('Episode marked as watched!', {
+    // Show immediate feedback
+    if (newWatchedStatus) {
+      toast.success(`Episode ${episode.episode_number} marked as watched!`, {
+        description: `"${episode.name}" - ${content.title || content.name}`,
+        duration: 3000,
+      });
+    } else {
+      toast.info(`Episode ${episode.episode_number} removed from watched list`, {
+        description: `"${episode.name}" - ${content.title || content.name}`,
+        duration: 3000,
+      });
+    }
+
+    try {
+      // Perform the actual database update
+      const result = await toggleEpisodeWatched(episode, content.id, content.title || content.name || '');
+
+      if (!result.success) {
+        // Revert optimistic update on failure
+        setEpisodes(prevEpisodes =>
+          prevEpisodes.map(ep =>
+            ep.id === episode.id
+              ? { ...ep, isWatched: !newWatchedStatus }
+              : ep
+          )
+        );
+
+        // Show error toast
+        toast.error('Failed to update episode status', {
           description: result.message,
-          duration: 3000,
+          duration: 4000,
         });
       } else {
-        toast.info('Episode removed from watched list', {
-          description: result.message,
-          duration: 3000,
-        });
+        // Log activity to database
+        await logEpisodeActivity(episode, result.isWatched);
       }
-
-      // Update local state optimistically
+    } catch (error) {
+      // Revert optimistic update on error
       setEpisodes(prevEpisodes =>
         prevEpisodes.map(ep =>
           ep.id === episode.id
-            ? { ...ep, isWatched: result.isWatched }
+            ? { ...ep, isWatched: !newWatchedStatus }
             : ep
         )
       );
-    } else {
-      // Show error toast
+
       toast.error('Failed to update episode status', {
-        description: result.message,
+        description: 'Please try again',
         duration: 4000,
       });
+    }
+  };
+
+  const logEpisodeActivity = async (episode: Episode, isWatched: boolean) => {
+    if (!content) return;
+
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      // Log the activity
+      await supabase.from('activities').insert({
+        user_id: user.id,
+        activity_type: isWatched ? 'episode_watched' : 'episode_unwatched',
+        content_id: content.id,
+        content_type: 'tv',
+        content_title: content.title || content.name || '',
+        episode_id: episode.id,
+        episode_number: episode.episode_number,
+        season_number: episode.season_number,
+        episode_title: episode.name,
+        metadata: {
+          episode_overview: episode.overview,
+          air_date: episode.air_date,
+          still_path: episode.still_path
+        }
+      });
+    } catch (error) {
+      console.error('Error logging episode activity:', error);
+    }
+  };
+
+  const markSeasonAsWatched = async (seasonNumber: number, watched: boolean) => {
+    if (!content || episodes.length === 0) return;
+
+    try {
+      // Update all episodes in the season
+      const episodesToUpdate = episodes.filter(ep => ep.season_number === seasonNumber);
+      
+      for (const episode of episodesToUpdate) {
+        if (episode.isWatched !== watched) {
+          await toggleEpisodeWatched(episode, content.id, content.title || content.name || '');
+          await logEpisodeActivity(episode, watched);
+        }
+      }
+
+      // Update local state
+      setEpisodes(prevEpisodes =>
+        prevEpisodes.map(ep =>
+          ep.season_number === seasonNumber
+            ? { ...ep, isWatched: watched }
+            : ep
+        )
+      );
+
+      // Show success toast
+      const watchedCount = watched ? episodesToUpdate.length : 0;
+      toast.success(
+        watched 
+          ? `Season ${seasonNumber} marked as watched!` 
+          : `Season ${seasonNumber} marked as unwatched!`,
+        {
+          description: `${watchedCount} episodes updated`,
+          duration: 3000,
+        }
+      );
+
+      // Log season activity
+      await logSeasonActivity(seasonNumber, watched, episodesToUpdate.length);
+
+    } catch (error) {
+      console.error('Error updating season:', error);
+      toast.error('Failed to update season', {
+        description: 'Please try again',
+        duration: 4000,
+      });
+    }
+  };
+
+  const logSeasonActivity = async (seasonNumber: number, isWatched: boolean, episodeCount: number) => {
+    if (!content) return;
+
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      // Log the season activity
+      await supabase.from('activities').insert({
+        user_id: user.id,
+        activity_type: isWatched ? 'season_watched' : 'season_unwatched',
+        content_id: content.id,
+        content_type: 'tv',
+        content_title: content.title || content.name || '',
+        season_number: seasonNumber,
+        metadata: {
+          episode_count: episodeCount,
+          season_number: seasonNumber
+        }
+      });
+    } catch (error) {
+      console.error('Error logging season activity:', error);
     }
   };
 
@@ -314,27 +462,79 @@ const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
             <div className="mt-6">
               <h3 className="text-xl font-bold text-[#082408] mb-4">Episodes</h3>
 
-              {/* Season Selector */}
-              <div className="flex gap-2 mb-4 overflow-x-auto">
-                {seasons.map((season) => (
-                  <button
-                    key={season}
-                    onClick={() => fetchEpisodes(season)}
-                    className={`px-3 py-1 rounded-full whitespace-nowrap transition-colors ${activeSeason === season
-                      ? 'bg-brand-accent text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                  >
-                    Season {season}
-                  </button>
-                ))}
+              {/* Season Selector and Controls */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex gap-2 overflow-x-auto">
+                  {seasons.map((season) => (
+                    <button
+                      key={season}
+                      onClick={() => fetchEpisodes(season)}
+                      className={`px-3 py-1 rounded-full whitespace-nowrap transition-colors ${activeSeason === season
+                        ? 'bg-brand-accent text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                    >
+                      Season {season}
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Season Actions */}
+                {episodes.length > 0 && (
+                  <div className="flex gap-2 ml-4">
+                    <button
+                      onClick={() => markSeasonAsWatched(activeSeason, true)}
+                      className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors"
+                    >
+                      Mark Season Watched
+                    </button>
+                    <button
+                      onClick={() => markSeasonAsWatched(activeSeason, false)}
+                      className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
+                    >
+                      Mark Season Unwatched
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Episodes List */}
               {loading ? (
-                <div className="text-center py-8">Loading episodes...</div>
-              ) : (
                 <div className="space-y-3">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="flex gap-3 p-3 bg-gray-50 rounded-lg animate-pulse">
+                      <div className="w-20 h-12 bg-gray-300 rounded" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-300 rounded w-3/4" />
+                        <div className="h-3 bg-gray-300 rounded w-full" />
+                        <div className="h-3 bg-gray-300 rounded w-2/3" />
+                      </div>
+                      <div className="w-6 h-6 bg-gray-300 rounded" />
+                    </div>
+                  ))}
+                </div>
+              ) : episodes.length > 0 ? (
+                <div className="space-y-3">
+                  {/* Season Progress */}
+                  <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-blue-800">
+                        Season {activeSeason} Progress
+                      </span>
+                      <span className="text-sm text-blue-600">
+                        {episodes.filter(ep => ep.isWatched).length} / {episodes.length} episodes
+                      </span>
+                    </div>
+                    <div className="w-full bg-blue-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ 
+                          width: `${(episodes.filter(ep => ep.isWatched).length / episodes.length) * 100}%` 
+                        }}
+                      />
+                    </div>
+                  </div>
+
                   {episodes.map((episode) => (
                     <EpisodeCard
                       key={episode.id}
@@ -343,6 +543,10 @@ const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
                       isWatched={episode.isWatched}
                     />
                   ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No episodes found for Season {activeSeason}</p>
                 </div>
               )}
             </div>
@@ -376,7 +580,7 @@ const EpisodeCard: React.FC<{
 
       <div className="flex-1">
         <div className="flex items-center justify-between">
-          <h4 className="font-medium text-sm">
+          <h4 className="font-medium text-sm text-gray-900">
             {episode.episode_number}. {episode.name}
           </h4>
           <button

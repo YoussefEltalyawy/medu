@@ -7,14 +7,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { VocabularyWord, WordStatus } from "@/types/vocabulary";
+import { VocabularyWord } from "@/types/vocabulary";
 import { StatusBadge } from "./StatusBadge";
 
 interface WordCardProps {
   word: VocabularyWord;
   onEdit: (word: VocabularyWord) => void;
   onDelete: (id: string) => void;
-  onStatusChange: (id: string, status: WordStatus) => void;
+  onStatusChange: (id: string, status: "learning" | "familiar" | "mastered") => void;
 }
 
 export const WordCard = ({ word, onEdit, onDelete, onStatusChange }: WordCardProps) => (
@@ -78,7 +78,7 @@ export const WordCard = ({ word, onEdit, onDelete, onStatusChange }: WordCardPro
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56">
             {(["learning", "familiar", "mastered"] as const).map((status) => (
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 key={status}
                 onClick={() => onStatusChange(word.id, status)}
               >

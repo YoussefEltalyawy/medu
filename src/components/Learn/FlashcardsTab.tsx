@@ -5,44 +5,39 @@ import { Squircle } from "corner-smoothing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { useFlashcards, type FlashcardWord } from "@/hooks/useFlashcards";
+import { useEnhancedFlashcards, type FlashcardWord } from "@/hooks/useEnhancedFlashcards";
+import { EnhancedFlashcard } from "@/components/vocabulary/EnhancedFlashcard";
+import { CheckCircle, Clock, BookOpen, Target } from "lucide-react";
 
-const statusText = {
-  learning: "Learning",
-  familiar: "Familiar",
-  mastered: "Mastered",
-} as const;
 
-const statusColors = {
-  learning: "bg-red-100 text-red-800",
-  familiar: "bg-yellow-100 text-yellow-800",
-  mastered: "bg-green-100 text-green-800",
-} as const;
 
 const FlashcardsTab: React.FC = () => {
   const {
     // State
-    allWords,
-    reviewWords,
-    currentIndex,
-    browseIndex,
+    currentSession,
+    currentWord,
+    dueWords,
+    learningWords,
     flipped,
     loading,
     error,
-    reviewComplete,
-    setReviewComplete,
-    mode,
-    reviewStats,
+    sessionComplete,
+    sessionStats,
 
     // Actions
-    setFlipped,
-    setMode,
-    setBrowseIndex,
-    updateWordStatus,
-    resetReview,
-    startReview,
-    startBrowse,
-  } = useFlashcards();
+    startReviewSession,
+    startLearningSession,
+    startMixedSession,
+    reviewCurrentWord,
+    resetSession,
+    flipCard,
+    nextWord,
+    previousWord,
+
+    // Utilities
+    getProgressPercentage,
+    getEstimatedTimeRemaining,
+  } = useEnhancedFlashcards();
 
   if (loading) {
     return <div className="text-center py-8">Loading flashcards...</div>;
@@ -53,7 +48,7 @@ const FlashcardsTab: React.FC = () => {
       <div className="text-center py-8">
         <p className="text-red-500 mb-4">{error}</p>
         <Button
-          onClick={resetReview}
+          onClick={() => window.location.reload()}
           className="bg-brand-accent text-white px-4 py-2 rounded-full hover:bg-opacity-90"
         >
           Try Again
@@ -62,63 +57,36 @@ const FlashcardsTab: React.FC = () => {
     );
   }
 
-  if (reviewComplete) {
+  if (sessionComplete && currentSession) {
     return (
       <div className="text-center p-6">
-        <h2 className="text-2xl font-bold text-[#082408] mb-6">
-          Review Complete! 🎉
-        </h2>
-
-        <div className="grid grid-cols-3 gap-6 mb-8 max-w-2xl mx-auto">
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <div className="text-3xl font-bold text-[#240808]">
-              {reviewStats.learning}
-            </div>
-            <div className="text-sm text-gray-600">Learning</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <div className="text-3xl font-bold text-[#4E4211]">
-              {reviewStats.familiar}
-            </div>
-            <div className="text-sm text-gray-600">Familiar</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <div className="text-3xl font-bold text-[#082408]">
-              {reviewStats.mastered}
-            </div>
-            <div className="text-sm text-gray-600">Mastered</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm col-span-3">
-            <div className="text-lg font-semibold text-gray-800 mb-2">
-              Today&apos;s Progress
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">
-                Reviewed: {reviewStats.reviewedToday} cards
-              </span>
-              <span className="text-sm text-gray-600">
-                Due: {reviewStats.dueForReview} cards
-              </span>
-            </div>
+        <div className="mb-4">
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
+            Session Complete!
+          </h2>
+          <p className="text-gray-600 dark:text-gray-300">
+            Great job! You've completed your {currentSession.type} session.
+          </p>
+          <div className="mt-4 space-y-2 text-sm text-muted-foreground">
+            <p>Words reviewed: {currentSession.wordsReviewed}</p>
+            <p>Accuracy: {Math.round(currentSession.accuracy)}%</p>
+            <p>Duration: {currentSession.duration} minutes</p>
           </div>
         </div>
-
-        <div className="flex justify-center space-x-4">
+        <div className="flex gap-3 justify-center">
           <Button
-            onClick={resetReview}
-            className="bg-brand-accent text-white px-6 py-3 rounded-full hover:bg-opacity-90 text-lg"
+            onClick={resetSession}
+            className="bg-brand-accent text-white px-4 py-2 rounded-full hover:bg-opacity-90"
           >
-            Start New Review
+            Start New Session
           </Button>
           <Button
             variant="outline"
-            onClick={() => {
-              setReviewComplete(false);
-              setMode("dashboard");
-            }}
-            className="px-6 py-3 rounded-full text-lg"
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 rounded-full"
           >
-            Return
+            Back to Dashboard
           </Button>
         </div>
       </div>
@@ -263,301 +231,156 @@ const FlashcardsTab: React.FC = () => {
     );
   };
 
-  if (mode === "review") {
-    if (reviewWords.length === 0) {
-      return (
-        <div className="text-center p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            No Cards to Review
-          </h2>
-          <p className="text-gray-600 mb-6">
-            All your words are mastered! Add more words to continue learning.
+  // If no session is active, show the dashboard
+  if (!currentSession) {
+    return (
+      <div className="space-y-8 w-full">
+        <div className="text-left">
+          <h2 className="text-3xl font-bold mb-4">Flashcard Dashboard</h2>
+          <p className="text-muted-foreground mb-8">
+            Choose your study session type and start learning!
           </p>
-          <Button variant="outline" onClick={() => setMode("dashboard")}>
-            Back to Dashboard
-          </Button>
         </div>
-      );
-    }
 
-    return (
-      <div className="p-4">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Flashcard Review</h2>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setMode("dashboard");
-              setFlipped(false);
-            }}
-          >
-            Exit Review
-          </Button>
+        {/* Session Type Selection */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+          {/* Review Session */}
+          <Card className="p-6 text-center hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => startReviewSession('review')}>
+            <CardContent className="p-0">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Clock className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Review Session</h3>
+              <p className="text-muted-foreground mb-4">
+                Review words that are due for repetition
+              </p>
+              <div className="text-2xl font-bold text-blue-600">
+                {dueWords.filter(w => w.reviewStatus === 'overdue' || w.reviewStatus === 'due_today').length}
+              </div>
+              <div className="text-sm text-muted-foreground">words due</div>
+            </CardContent>
+          </Card>
+
+          {/* Learning Session */}
+          <Card className="p-6 text-center hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => startLearningSession()}>
+            <CardContent className="p-0">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Learning Session</h3>
+              <p className="text-muted-foreground mb-4">
+                Learn new words for the first time
+              </p>
+              <div className="text-2xl font-bold text-green-600">
+                {learningWords.length}
+              </div>
+              <div className="text-sm text-muted-foreground">new words</div>
+            </CardContent>
+          </Card>
+
+          {/* Mixed Session */}
+          <Card className="p-6 text-center hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => startMixedSession()}>
+            <CardContent className="p-0">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Target className="w-8 h-8 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Mixed Session</h3>
+              <p className="text-muted-foreground mb-4">
+                Combine review and learning for variety
+              </p>
+              <div className="text-2xl font-bold text-purple-600">
+                {Math.min(20, dueWords.length + learningWords.length)}
+              </div>
+              <div className="text-sm text-muted-foreground">total words</div>
+            </CardContent>
+          </Card>
         </div>
-        {renderFlashcard(reviewWords[currentIndex], true)}
+
+        {/* Statistics */}
+        {sessionStats && (
+          <div className="w-full">
+            <h3 className="text-xl font-semibold mb-4 text-left">Your Progress</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-card p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-blue-600">{sessionStats.totalReviews}</div>
+                <div className="text-sm text-muted-foreground">Total Reviews</div>
+              </div>
+              <div className="bg-card p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-green-600">{sessionStats.averageAccuracy}%</div>
+                <div className="text-sm text-muted-foreground">Avg. Accuracy</div>
+              </div>
+              <div className="bg-card p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-purple-600">{sessionStats.wordsMastered}</div>
+                <div className="text-sm text-muted-foreground">Words Mastered</div>
+              </div>
+              <div className="bg-card p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-orange-600">{sessionStats.streakDays}</div>
+                <div className="text-sm text-muted-foreground">Day Streak</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
-  if (mode === "browse") {
+  // If session is active, show the flashcard
+  if (currentWord) {
     return (
-      <div className="p-4">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Browse All Cards</h2>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setMode("dashboard");
-              setFlipped(false);
-            }}
-          >
-            Back to Dashboard
-          </Button>
+      <div className="space-y-6">
+        {/* Session Header */}
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={previousWord}
+              disabled={currentSession.currentIndex === 0}
+            >
+              ← Previous
+            </Button>
+            <span className="text-lg font-medium">
+              {currentSession.currentIndex + 1} of {currentSession.totalWords}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={nextWord}
+              disabled={currentSession.currentIndex === currentSession.totalWords - 1}
+            >
+              Next →
+            </Button>
+          </div>
+
+          {/* Progress Bar */}
+          <Progress
+            value={getProgressPercentage()}
+            className="h-2 max-w-md mx-auto"
+          />
+
+          {/* Session Info */}
+          <div className="flex justify-center gap-6 mt-4 text-sm text-muted-foreground">
+            <span>Accuracy: {Math.round(currentSession.accuracy)}%</span>
+            <span>Time: ~{getEstimatedTimeRemaining()} min left</span>
+          </div>
         </div>
-        {renderFlashcard(allWords[browseIndex], false)}
+
+        {/* Enhanced Flashcard Component */}
+        <EnhancedFlashcard
+          word={currentWord}
+          onReview={reviewCurrentWord}
+          onSkip={nextWord}
+          showProgress={false}
+          currentIndex={currentSession.currentIndex}
+          totalWords={currentSession.totalWords}
+          sessionType={currentSession.type}
+        />
       </div>
     );
   }
-
-  // Main dashboard view for flashcards
-  return (
-    <div className="space-y-6 p-4">
-      <div>
-        <h2 className="text-3xl font-bold mb-2">
-          Flashcard Review
-        </h2>
-        <p className="text-gray-600">
-          Review your vocabulary with spaced repetition
-        </p>
-      </div>
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Total Cards */}
-        <Squircle
-          cornerRadius={20}
-          className="bg-brand-blue p-6 before:bg-blue-100 h-36"
-        >
-          <div className="flex flex-col h-full">
-            <div className="flex justify-between items-start">
-              <div className="text-lg text-brand-light-blue font-medium">
-                Total Cards
-              </div>
-              <div className="text-brand-light-blue">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                  />
-                </svg>
-              </div>
-            </div>
-            <div className="mt-auto">
-              <div className="text-4xl font-bold text-brand-light-blue">
-                {reviewStats.total}
-              </div>
-            </div>
-          </div>
-        </Squircle>
-
-        {/* Due for Review */}
-        <Squircle
-          cornerRadius={20}
-          className="bg-brand-yellow p-6 before:bg-yellow-100 h-36"
-        >
-          <div className="flex flex-col h-full">
-            <div className="flex justify-between items-start">
-              <div className="text-lg text-brand-light-yellow font-medium">
-                Due for Review
-              </div>
-              <div className="text-brand-light-yellow">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-            </div>
-            <div className="mt-auto">
-              <div className="text-4xl font-bold text-brand-light-yellow">
-                {reviewStats.dueForReview}
-              </div>
-            </div>
-          </div>
-        </Squircle>
-
-        {/* Reviewed Today */}
-        <Squircle
-          cornerRadius={20}
-          className="bg-brand-green p-6 before:bg-green-100 h-36"
-        >
-          <div className="flex flex-col h-full">
-            <div className="flex justify-between items-start">
-              <div className="text-lg text-brand-light-green font-medium">
-                Reviewed Today
-              </div>
-              <div className="text-brand-light-green">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-            </div>
-            <div className="mt-auto">
-              <div className="text-4xl font-bold text-brand-light-green">
-                {reviewStats.reviewedToday}
-              </div>
-            </div>
-          </div>
-        </Squircle>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-        <Squircle
-          cornerRadius={20}
-          className="bg-[#5E7850]/20 dark:bg-[#1d1d1d] p-6 cursor-pointer  transition-all hover:-translate-y-1 before:bg-card h-full"
-          onClick={startReview}
-        >
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-blue-900 rounded-full">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8 text-blue-100"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                />
-              </svg>
-            </div>
-            <div className="w-full">
-              <div className="flex justify-between">
-                <h3 className="text-lg font-semibold">
-                  Start Review
-                </h3>
-                <span className="ml-2 bg-gray-100 dark:bg-black/60 px-2 py-1 rounded-full text-sm">
-                  {reviewWords.length} {reviewWords.length === 1 ? 'card' : 'cards'}
-
-                </span>
-              </div>
-              <p className="text-sm text-gray-500">
-                Review cards with spaced repetition
-              </p>
-            </div>
-          </div>
-        </Squircle>
-
-        <Squircle
-          cornerRadius={20}
-          className="bg-[#5E7850]/20 dark:bg-[#1d1d1d] p-6 cursor-pointer  transition-all hover:-translate-y-1 before:bg-card h-full"
-          onClick={startBrowse}
-        >
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-purple-900 rounded-full">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8 text-purple-100"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16m-7 6h7"
-                />
-              </svg>
-            </div>
-            <div className="w-full">
-              <div className="flex justify-between">
-                <h3 className="text-lg font-semibold">
-                  Browse All Cards
-                </h3>
-                <span className="ml-2 bg-gray-100 dark:bg-black/60 px-2 py-1 rounded-full text-sm">
-                  {allWords.length} {allWords.length === 1 ? 'card' : 'cards'}
-                </span>
-              </div>
-              <p className="text-sm text-gray-500">
-                View and flip through all your cards
-              </p>
-            </div>
-          </div>
-        </Squircle>
-      </div>
-
-      {/* Recent Cards */}
-      <div className="mt-8">
-        <h3 className="font-semibold text-gray-800 mb-4">Recent Cards</h3>
-        <div className="space-y-4">
-          {allWords.slice(0, 3).map((word) => (
-            <div key={word.id} className="bg-card p-4 rounded-xl border border-[#5E7850]/20 dark:border-[#1d1d1d]">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h4 className="font-medium">{word.german}</h4>
-                  <p className="text-gray-600">{word.english}</p>
-                </div>
-                <div>
-                  {word.status === "learning" && (
-                    <span className="px-2 py-1 bg-red-800 text-red-100 text-xs rounded-full">
-                      learning
-                    </span>
-                  )}
-                  {word.status === "familiar" && (
-                    <span className="px-2 py-1 bg-yellow-800 text-yellow-100 text-xs rounded-full">
-                      familiar
-                    </span>
-                  )}
-                  {word.status === "mastered" && (
-                    <span className="px-2 py-1 bg-green-800 text-green-100 text-xs rounded-full">
-                      mastered
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-          {allWords.length === 0 && (
-            <p className="text-gray-500 text-center py-4">
-              No vocabulary words found. Add some words to get started!
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
 };
 
 export default FlashcardsTab;

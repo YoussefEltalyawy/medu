@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
-import NavBar from "../components/NavBar";
+import ConditionalNavBar from "../components/ConditionalNavBar";
 import { AuthProvider } from '@/contexts/AuthContext'
 import { WatchedContentProvider } from '@/contexts/WatchedContentContext'
+import { LanguagePreferenceProvider } from '@/contexts/LanguagePreferenceContext'
+
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from "@/components/theme-provider";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -28,20 +31,24 @@ export default function RootLayout({
       <body
         className={`${manrope.variable} antialiased`}
       >
-        <AuthProvider>
-          <WatchedContentProvider>
-            <NavBar />
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              {children}
-            </ThemeProvider>
-            <Toaster />
-          </WatchedContentProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <LanguagePreferenceProvider>
+              <WatchedContentProvider>
+                <ConditionalNavBar />
+                <ThemeProvider
+                  attribute="class"
+                  defaultTheme="system"
+                  enableSystem
+                  disableTransitionOnChange
+                >
+                  {children}
+                </ThemeProvider>
+                <Toaster />
+              </WatchedContentProvider>
+            </LanguagePreferenceProvider>
+          </AuthProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );
