@@ -5,11 +5,12 @@ import { useSearchParams } from "next/navigation";
 import VocabularyTab from "@/components/Learn/VocabularyTab";
 import FlashcardsTab from "@/components/Learn/FlashcardsTab";
 import ProgressTab from "@/components/Learn/ProgressTab";
+import { EnhancedLearningTab } from "@/components/Learn/EnhancedLearningTab";
 
 const LearnPage = () => {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<
-    "Flashcards" | "Vocabulary" | "Progress"
+    "Flashcards" | "Vocabulary" | "Progress" | "Enhanced"
   >("Vocabulary");
 
   useEffect(() => {
@@ -54,6 +55,15 @@ const LearnPage = () => {
           >
             Progress
           </button>
+          <button
+            onClick={() => setActiveTab("Enhanced")}
+            className={`px-4 py-2 rounded-full ${activeTab === "Enhanced"
+              ? "bg-brand-accent text-white"
+              : "bg-gray-200 text-gray-700"
+              }`}
+          >
+            Enhanced Learning
+          </button>
         </div>
 
         {/* Tab Content */}
@@ -61,6 +71,7 @@ const LearnPage = () => {
           {activeTab === "Flashcards" && <FlashcardsTab />}
           {activeTab === "Vocabulary" && <VocabularyTab />}
           {activeTab === "Progress" && <ProgressTab />}
+          {activeTab === "Enhanced" && <EnhancedLearningTab />}
         </div>
       </div>
     </main>
